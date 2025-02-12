@@ -973,11 +973,37 @@ function createTaskEl(task) {
 let noTaskTitle = document.getElementById("no-task-title");
 
 function noTaskManager() {
-    if (tasks.length === 0) {
-        taskSelect.style.display = "none";
-    } else {
-        taskSelect.style.display = "initial";
-    }
+    // Hide task select by default
+    taskSelect.style.display = "none";
+    
+    // Check if user is logged in
+    supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user) {
+            // Not logged in - hide task management UI
+            manageTasks.style.display = "none";
+            mainel.style.display = "flex";
+            return;
+        }
+        
+        // User is logged in - handle task UI visibility
+        if (tasks.length === 0) {
+            mainel.style.display = "none";
+            manageTasks.style.display = "flex";
+            viewState = "tasks";
+            
+            // Show message if no tasks exist
+            const noTasksMessage = document.querySelector('.content h2 + br + div');
+            if (noTasksMessage) {
+                noTasksMessage.textContent = "Please create your first task to get started with the timer.";
+            }
+        } else {
+            taskSelect.style.display = "initial";
+            if (viewState === "timer") {
+                mainel.style.display = "flex";
+                manageTasks.style.display = "none";
+            }
+        }
+    });
 }
 
 async function taskInit() {
@@ -1034,6 +1060,13 @@ document.getElementById("newtask").addEventListener("submit", async function (ev
 			}
 			noTaskManager();
 			this.reset();
+
+			// If this was the first task, show the timer
+			if (tasks.length === 1) {
+				viewState = "timer";
+				mainel.style.display = "flex";
+				manageTasks.style.display = "none";
+			}
 		}
 	} catch (error) {
 		console.error('Error saving task to Supabase:', error)

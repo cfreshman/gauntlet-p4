@@ -1,0 +1,31 @@
+.sync-indicator {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  background-color: var(--bgcolor2);
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  font-size: 14px;
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+}
+
+.sync-indicator.active {
+  display: flex;
+}
+
+.sync-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--coloraccent);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+} 

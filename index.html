@@ -15,22 +15,21 @@
 	</head>
 	<body>
 		<nav class="top-nav">
-			<button id="menubtn" title="Open Settings" class="icon-button">
-				<span class="material-icons-round">menu</span>
-			</button>
-			<div id="taskswitcher">
+			<div class="nav-group">
+				<button id="menubtn" title="Open Settings" class="icon-button">
+					<span class="material-icons-round">menu</span>
+				</button>
 				<button id="statbtn" title="View Statistics" class="icon-button">
 					<span class="material-icons-round">bar_chart</span>
 				</button>
 				<select name="task" id="task-select" title="Switch Task"></select>
-				<div id="no-task-title" title="No Task Found">Gomodoro</div>
 				<button id="managetaskbtn" title="Manage Task" class="icon-button">
 					<span class="material-icons-round">edit</span>
 				</button>
+				<button id="popupbtn" title="Toggle PIP Mode" class="icon-button">
+					<span class="material-icons-round">picture_in_picture</span>
+				</button>
 			</div>
-			<button id="popupbtn" title="Toggle PIP Mode" class="icon-button">
-				<span class="material-icons-round">picture_in_picture</span>
-			</button>
 		</nav>
 		
 		<main id="main">
@@ -39,15 +38,15 @@
 					<circle id="secondary" cx="50" cy="50" r="48" fill="none" />
 					<circle id="progress" cx="50" cy="50" r="48" fill="none" pathlength="100" />
 				</svg>
-				<div id="time"></div>
+				<div id="time" class="time-display"></div>
 
-				<div id="status">
+				<div id="status" class="status-text">
 					<span id="s-focus">FOCUS</span>
 					<span id="s-short">SHORT BREAK</span>
 					<span id="s-long">LONG BREAK</span>
 				</div>
 				<button id="pauseplay" class="paused" title="Start Timer">
-					<span class="material-icons-round playing">pause_circle</span>
+					<span class="material-icons-round playing play-button">pause_circle</span>
 					<span class="material-icons-round paused">play_circle</span>
 				</button>
 			</div>
@@ -56,7 +55,7 @@
 				<button id="resetround" title="Reset Current Timer" class="control-button">
 					<span class="material-icons-round">replay</span>
 				</button>
-				<div id="roundno" title="Number of Focus Rounds"></div>
+				<div id="roundno" title="Number of Focus Rounds" class="round-number"></div>
 				<div id="slider-container">
 					<div id="slider-overlay" class="disabled">
 						<span id="volume-value">80</span>
@@ -231,15 +230,15 @@
 				<h2>Overview</h2>
 				<div id="stat-summary" class="remark">
 					You focused for a total duration of
-					<span id="stat-summary-total"></span>
+					<span id="stat-summary-total" class="stat-value"></span>
 					consisting of
-					<span id="stat-summary-rounds"></span>
+					<span id="stat-summary-rounds" class="stat-value"></span>
 					Focus Rounds with an average round duration of
-					<span id="stat-summary-average"></span>
+					<span id="stat-summary-average" class="stat-value"></span>
 					<br /><br />
-					Shortest round duration: <span id="stat-summary-shortest"></span>
+					Shortest round duration: <span id="stat-summary-shortest" class="stat-value"></span>
 					<br />
-					Longest round duration: <span id="stat-summary-longest"></span>
+					Longest round duration: <span id="stat-summary-longest" class="stat-value"></span>
 				</div>
 				<h2>Time Distribution:</h2>
 				<div id="pie-container">
@@ -284,6 +283,7 @@
 						min="1"
 						maxlength="25"
 						placeholder="Add New Task"
+						class="task-input"
 					/>
 					<button type="submit" title="Create new task" id="new-task-btn">
 						<span class="material-icons-round">add</span>

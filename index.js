@@ -91,12 +91,24 @@ let isSyncing = false;
 
 let isOnline = navigator.onLine
 
+function updateRootFontSize() {
+    const vmin = Math.min(window.innerWidth, window.innerHeight) / 100;
+    const fontSize = Math.min(vmin * 3, 20); // Cap at 20px while maintaining responsive scaling
+    document.documentElement.style.fontSize = `${fontSize}px`;
+}
+
+// Call on initial load
+updateRootFontSize();
+
+// Add resize listener
+window.addEventListener('resize', updateRootFontSize);
+
 window.addEventListener('online', () => {
 	isOnline = true
 	// Sync when coming back online
 	if (supabase.auth.session()) {
-		syncFromSupabase()
-		syncSessions()
+			syncFromSupabase()
+			syncSessions()
 	}
 })
 
@@ -961,13 +973,11 @@ function createTaskEl(task) {
 let noTaskTitle = document.getElementById("no-task-title");
 
 function noTaskManager() {
-	if (tasks.length === 0) {
-		taskSelect.style.display = "none";
-		noTaskTitle.style.display = "block";
-	} else {
-		taskSelect.style.display = "initial";
-		noTaskTitle.style.display = "none";
-	}
+    if (tasks.length === 0) {
+        taskSelect.style.display = "none";
+    } else {
+        taskSelect.style.display = "initial";
+    }
 }
 
 async function taskInit() {

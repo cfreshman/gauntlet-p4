@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { config } from './config.js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -80,25 +81,44 @@ export async function bulkSaveSessions(sessions) {
 
 // Task functions
 export async function saveTasks(tasks) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Must be logged in to save tasks')
+
   return await supabase
     .from('tasks')
-    .insert(tasks)
+    .insert(tasks.map(task => ({
+      ...task,
+      user_id: user.id
+    })))
     .select()
 }
 
 export async function getTasks() {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Must be logged in to get tasks')
+
   return await supabase
     .from('tasks')
     .select('*')
+    .eq('user_id', user.id)
     .order('created_at', { ascending: true })
 }
 
 export async function getTaskByName(name) {
-  return await supabase
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data, error } = await supabase
     .from('tasks')
     .select('*')
-    .eq('name', name)
+    .eq('user_id', user.id)
+    .ilike('name', name)
     .single()
+
+  if (error?.code === 'PGRST116') return null
+  if (error) throw error
+
+  return data || null
 }
 
 export async function createTask(name) {
@@ -138,29 +158,29 @@ export async function getCurrentSession() {
 // Timer state table functions
 export async function updateTimerState(state) {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
+  if (!user) return null
   
   const { data, error } = await supabase
     .from('timer_states')
     .upsert({
       user_id: user.id,
-      current: state.current,
-      time: state.t,
-      remaining_time: state.duration - state.t,
+      current: state.current || 'focus',
+      time: state.t || 0,
+      remaining_time: state.duration ? (state.duration - state.t) : 0,
       started_at: state.running ? new Date().toISOString() : null,
-      running: state.running,
-      focus_num: state.focusNum,
-      selected_task: state.selectedTask
+      running: state.running || false,
+      focus_num: state.focusNum || 1,
+      selected_task: state.selectedTask || 'Default Task',
+      updated_at: new Date().toISOString()
     })
+    .select()
+    .maybeSingle()
   
   if (error) {
-    console.error('Error updating timer state:', {
-      error,
-      details: error.details,
-      hint: error.hint,
-      message: error.message
-    })
+    console.error('Error updating timer state:', error)
+    return null
   }
+
   return { data, error }
 }
 
@@ -168,12 +188,17 @@ export async function getTimerState() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
   
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('timer_states')
     .select('*')
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
     
+  if (error) {
+    console.error('Error getting timer state:', error)
+    return null
+  }
+
   return data
 }
 
@@ -193,4 +218,71 @@ export async function subscribeToTimerState(callback) {
       callback
     )
     .subscribe()
+}
+
+// Session recording functions
+export async function startSession(taskId, timerDuration) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  return await supabase
+    .from('daily_sessions')
+    .insert({
+      user_id: user.id,
+      task_id: taskId,
+      start_time: new Date().toISOString(),
+      end_time: new Date().toISOString(),
+      timer_duration: timerDuration,
+      actual_duration: 0
+    })
+    .select()
+    .single()
+}
+
+export async function endSession(sessionId, actualDuration, notes = null) {
+  if (actualDuration < 60) { // Less than 1 minute
+    return await supabase
+      .from('daily_sessions')
+      .delete()
+      .match({ id: sessionId })
+  }
+
+  return await supabase
+    .from('daily_sessions')
+    .update({
+      end_time: new Date().toISOString(),
+      actual_duration: actualDuration,
+      notes
+    })
+    .match({ id: sessionId })
+}
+
+export async function updateSelectedTask(taskName) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  
+  // First get existing state
+  const { data: existingState } = await getTimerState()
+  
+  // If no existing state, create a new one with defaults
+  if (!existingState) {
+    return await updateTimerState({
+      current: 'focus',
+      t: 0,
+      duration: config.focus,
+      running: false,
+      focusNum: 1,
+      selectedTask: taskName
+    })
+  }
+  
+  // Update existing state
+  return await updateTimerState({
+    current: existingState.current || 'focus',
+    t: existingState.time || 0,
+    duration: config[existingState.current || 'focus'],
+    running: existingState.running || false,
+    focusNum: existingState.focus_num || 1,
+    selectedTask: taskName
+  })
 } 

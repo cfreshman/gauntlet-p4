@@ -1,26 +1,45 @@
--- Create tables
-create table if not exists tasks (
-  id uuid default uuid_generate_v4() primary key,
+-- Drop our tables if they exist
+drop table if exists daily_sessions, timer_states, tasks cascade;
+
+-- Drop old tables
+drop table if exists pomodoro_sessions cascade;
+
+-- Drop existing trigger
+drop trigger if exists on_auth_user_created on auth.users;
+
+-- Drop existing publications
+drop publication if exists supabase_realtime cascade;
+
+-- Create base publication
+create publication supabase_realtime;
+
+-- Create tasks table
+create table tasks (
+  id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id),
   name text not null,
   created_at timestamp with time zone default now()
 );
 
-create table if not exists pomodoro_sessions (
-  id uuid default uuid_generate_v4() primary key,
-  user_id uuid references auth.users(id),
-  task_id uuid references tasks(id),
-  duration integer not null,
-  type text check (type in ('focus', 'short', 'long')),
-  completed boolean default true,
-  created_at timestamp with time zone default now()
-);
+-- Add unique constraint on user_id + name
+create unique index tasks_user_name_idx on tasks(user_id, name);
 
--- Enable RLS
+-- Create trigger to create Default Task for new users
+create or replace function create_default_task()
+returns trigger as $$
+begin
+  insert into tasks (user_id, name)
+  values (new.id, 'Default Task');
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure create_default_task();
+
 alter table tasks enable row level security;
-alter table pomodoro_sessions enable row level security;
 
--- Create policies
 create policy "Users can view own tasks"
   on tasks for select using (auth.uid() = user_id);
 
@@ -33,8 +52,53 @@ create policy "Users can update own tasks"
 create policy "Users can delete own tasks"
   on tasks for delete using (auth.uid() = user_id);
 
+-- Create timer states table
+create table timer_states (
+  user_id uuid primary key references auth.users(id),
+  current text not null,
+  time integer not null,
+  remaining_time integer,
+  started_at timestamp with time zone,
+  running boolean not null,
+  focus_num integer not null,
+  selected_task text,
+  updated_at timestamp with time zone default now()
+);
+
+alter table timer_states enable row level security;
+alter table timer_states replica identity full;  -- Enable realtime
+
+create policy "Users can view own timer state"
+  on timer_states for select using (auth.uid() = user_id);
+
+create policy "Users can update own timer state"
+  on timer_states for update using (auth.uid() = user_id);
+
+create policy "Users can insert own timer state"
+  on timer_states for insert with check (auth.uid() = user_id);
+
+-- Create daily sessions table
+create table daily_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id),
+  task_id uuid references tasks(id),
+  start_time timestamp with time zone not null,
+  end_time timestamp with time zone not null,
+  timer_duration integer not null,    -- What they set the timer to
+  actual_duration integer not null,   -- How long they actually worked
+  notes text,                        -- Context about what they did
+  created_at timestamp with time zone default now()
+);
+
+create index sessions_user_time_idx on daily_sessions(user_id, start_time);
+
+alter table daily_sessions enable row level security;
+
 create policy "Users can view own sessions"
-  on pomodoro_sessions for select using (auth.uid() = user_id);
+  on daily_sessions for select using (auth.uid() = user_id);
 
 create policy "Users can insert own sessions"
-  on pomodoro_sessions for insert with check (auth.uid() = user_id); 
+  on daily_sessions for insert with check (auth.uid() = user_id);
+
+-- Enable realtime
+alter publication supabase_realtime add table public.timer_states; 

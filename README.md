@@ -1,8 +1,13 @@
-# Tomodoro
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Z8Z6E84CZ)&nbsp;
-<a href="https://www.producthunt.com/posts/tomodoro?utm_source=badge-featured&utm_medium=badge&utm_souce=badge-tomodoro" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=355079&theme=light" alt="Tomodoro - Simple&#0032;Pomodoro&#0032;timer&#0032;for&#0032;the&#0032;web | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
+# Gomodoro
 
-A pomodoro web app with PIP mode, white noise generation, tasks and more!
+An AI-enhanced Pomodoro timer that helps you track and analyze your focus sessions. Built as part of the GauntletAI project, it extends the [open-source Tomodoro timer](https://github.com/lazy-guy/tomodoro) with cloud sync and AI features.
+
+### Support the Original Creator
+If you find this useful, please consider supporting the original Tomodoro creator:
+
+<a href="https://ko-fi.com/Z8Z6E84CZ"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support the original Tomodoro creator on Ko-fi"></a>
+
+<a href="https://www.producthunt.com/posts/tomodoro?utm_source=badge-featured&utm_medium=badge&utm_souce=badge-tomodoro" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=355079&theme=light" alt="Tomodoro - Simple&#0032;Pomodoro&#0032;timer&#0032;for&#0032;the&#0032;web | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 
 ![Screenshot](https://lazy-guy.github.io/tomodoro/screenshot.png)
 
@@ -10,17 +15,17 @@ A pomodoro web app with PIP mode, white noise generation, tasks and more!
 
 -   Clean UI
 -   PIP Mode
--   Tasks and Statistics
+-   Cloud Sync & Analytics
+-   Task Management
 -   White Noise
 -   Themes
--   Works Offline
+-   AI Integration (Coming Soon)
 
-## Tasks and Statistics
+## Cloud Sync & Analytics
 
 ![Statistics](https://lazy-guy.github.io/tomodoro/statistics.png)
 
-Tomodoro allows the creation of "Tasks". Time spent in a focus session can be dedicated to a task in order to generate statistics.
-All the data is saved in your browser. Taking frequent backups is recommended. Backup and restore options are available in Tomodoro's settings.
+Gomodoro syncs your tasks and focus sessions across devices and analyzes them to provide insights into your productivity patterns. The data is stored securely in the cloud and accessible from any device.
 
 ## About Always On Top/PIP Mode
 
@@ -36,13 +41,13 @@ On Android browsers, like Chrome for Android which does not support the Picture-
 
 ## To-Do
 
--   Make code cleaner
--   Add custom theming
-
+-   AI-powered task analysis
+-   Productivity insights and recommendations
+-   Enhanced data visualization
+-   Custom theming
 
 ## Credits
 Icons from [Material Icons](https://developers.google.com/fonts/docs/material_icons)
-
 
 ## License
 [MIT](LICENSE.md)

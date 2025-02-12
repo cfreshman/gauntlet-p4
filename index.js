@@ -1,7 +1,6 @@
 import { 
 	supabase,
 	saveSession,
-	saveTasks as saveTasksToSupabase,
 	getTasks,
 	updateTask,
 	deleteTask,
@@ -11,10 +10,14 @@ import {
 	bulkSaveSessions,
 	updateTimerState,
 	getTimerState,
-	subscribeToTimerState
+	subscribeToTimerState,
+	startSession,
+	endSession,
+	saveTasks,
 } from './supabase-client.js'
 import { createAuthUI } from './auth-ui.js'
 import './loading-indicator.css'
+import { config } from './config.js'
 
 // Unregister service worker
 if ('serviceWorker' in navigator) {
@@ -69,13 +72,6 @@ const fullname = {
 
 let viewState = "timer";
 
-let config = {
-	focus: 1500,
-	short: 300,
-	long: 900,
-	longGap: 4,
-};
-
 let audioType = "";
 
 let volume = 80;
@@ -87,7 +83,8 @@ let roundInfo = {
 	focusNum: 1,
 	current: "focus",
 	running: false,
-	remaining: 0,
+	remaining: config.focus,  // Initialize with focus duration
+	currentSessionId: null
 };
 
 let isSyncing = false;
@@ -122,18 +119,35 @@ function setTime() {
 		":" +
 		(seconds % 60).toString().padStart(2, "0");
 	timediv.innerText = timestr;
-	document.title = `${timestr} ${fullname[roundInfo.current]} - Tomodoro`;
-	progress.style.strokeDashoffset = (roundInfo.t / config[roundInfo.current]) * 100;
+	document.title = `${timestr} ${fullname[roundInfo.current]} - Gomodoro`;
+	
+	// Update progress ring (100 to 0 scale)
+	const progressPercent = (roundInfo.t / config[roundInfo.current]) * 100;
+	progress.style.strokeDashoffset = progressPercent;
+	
 	if (pipActive) loop();
 }
 
 timerWorker.addEventListener("message", (e) => {
 	roundInfo.t = e.data.t;
+	roundInfo.running = e.data.running;
 	setTime();
-	if (e.data.t % 5 === 0) { // Sync every 5 seconds to reduce updates
-		syncTimerState()
+	
+	// Update UI state
+	if (roundInfo.running) {
+		pauseplaybtn.title = "Pause Timer";
+		pauseplaybtn.className = "playing";
+	} else {
+		pauseplaybtn.title = "Start Timer";
+		pauseplaybtn.className = "paused";
 	}
-	if (!e.data.running) {
+	
+	if (e.data.t % 5 === 0) { // Sync every 5 seconds to reduce updates
+		syncTimerState();
+	}
+	
+	// Only advance to next round if timer completed naturally (reached maxDuration)
+	if (!e.data.running && e.data.t >= e.data.maxDuration) {
 		timer.style.setProperty("--progress", "0");
 		nextRound();
 	}
@@ -143,12 +157,53 @@ timerWorker.addEventListener("message", (e) => {
 
 //#region Timer Actions
 
+// Create notes dialog once at startup
+const notesDialog = document.createElement('dialog')
+notesDialog.className = 'notes-dialog'
+notesDialog.innerHTML = `
+	<form method="dialog">
+		<h2>Session Complete</h2>
+		<p>What did you accomplish?</p>
+		<textarea id="session-notes" 
+			placeholder="e.g., Finished first draft of proposal, researched key points..."
+			rows="4"></textarea>
+		<div class="dialog-buttons">
+			<button type="submit" value="skip">Skip</button>
+			<button type="submit" value="save" class="primary">Save Notes</button>
+		</div>
+	</form>
+`
+document.body.appendChild(notesDialog)
+
+// Handle notes submission
+notesDialog.addEventListener('close', () => {
+	if (notesDialog.returnValue === 'save') {
+		const notes = document.getElementById('session-notes').value
+		if (roundInfo.currentSessionId && notes) {
+			endSession(roundInfo.currentSessionId, roundInfo.t, notes)
+		}
+	} else if (roundInfo.currentSessionId) {
+		endSession(roundInfo.currentSessionId, roundInfo.t)
+	}
+	document.getElementById('session-notes').value = ''
+	roundInfo.currentSessionId = null
+})
+
 function nextRound() {
 	let finished = fullname[roundInfo.current];
 	let body = "Begin ";
 	if (roundInfo.current === "focus") {
 		if (audioType === "noise") {
 			fadeOut();
+		}
+		// End current session if one exists
+		if (roundInfo.currentSessionId) {
+			// If they didn't complete most of the session, delete it
+			if (roundInfo.t < config[roundInfo.current] * 0.75) {
+				endSession(roundInfo.currentSessionId, roundInfo.t)
+			} else {
+				notesDialog.showModal()
+			}
 		}
 		focusEnd(roundInfo.t);
 		finished += " Round";
@@ -175,6 +230,16 @@ function nextRound() {
 		if (roundInfo.current === "focus" && audioType === "noise") {
 			fadeIn();
 		}
+		// Start new session if starting a focus round
+		if (roundInfo.current === 'focus' && selectedTask) {
+			getTaskByName(selectedTask).then(task => {
+				if (task) {
+					startSession(task.id, config.focus).then(({ data }) => {
+						if (data) roundInfo.currentSessionId = data.id
+					})
+				}
+			})
+		}
 		timerWorker.postMessage({
 			type: "start",
 			maxDuration: config[roundInfo.current],
@@ -186,10 +251,11 @@ function nextRound() {
 function pauseplay() {
 	if (roundInfo.current === "none") {
 		nextRound();
-		pauseplaybtn.className = "playing";
 		return;
 	}
+
 	if (roundInfo.running) {
+		// Pausing
 		if (roundInfo.current === "focus" && audioType === "noise") {
 			fadeOut();
 		}
@@ -198,17 +264,44 @@ function pauseplay() {
 		roundInfo.remaining = config[roundInfo.current] - roundInfo.t;
 		pauseplaybtn.title = "Start Timer";
 		pauseplaybtn.className = "paused";
+		// End session if one is in progress
+		if (roundInfo.currentSessionId) {
+			focusEnd(roundInfo.t);
+		}
 	} else {
+		// Resuming or starting
 		if (roundInfo.current === "focus" && audioType === "noise") {
 			fadeIn();
 		}
 		roundInfo.running = true;
 		pauseplaybtn.title = "Pause Timer";
 		pauseplaybtn.className = "playing";
+		
+		// Calculate correct time position based on remaining time
+		if (roundInfo.remaining > 0) {
+			roundInfo.t = config[roundInfo.current] - roundInfo.remaining;
+			roundInfo.remaining = 0;  // Reset remaining after using it
+		}
+		
+		// Start new session if this is a focus round AND we're starting fresh
+		if (roundInfo.current === 'focus' && selectedTask && roundInfo.t === 0) {
+			getTaskByName(selectedTask).then(async task => {
+				if (task) {
+					try {
+						const { data } = await startSession(task.id, config.focus);
+						if (data) roundInfo.currentSessionId = data.id;
+					} catch (error) {
+						console.error('Error starting session:', error);
+					}
+				}
+			});
+		}
+		
+		// Start the timer with correct duration and position
 		timerWorker.postMessage({
 			type: "start",
-			t: config[roundInfo.current] - roundInfo.remaining,
-			maxDuration: config[roundInfo.current],
+			t: roundInfo.t,
+			maxDuration: config[roundInfo.current]
 		});
 	}
 	syncTimerState();
@@ -221,9 +314,28 @@ nextbtn.addEventListener("click", () => {
 });
 
 document.getElementById("resetround").addEventListener("click", () => {
-	if (roundInfo.running) pauseplay();
+	// Stop the timer if it's running
+	if (roundInfo.running) {
+		timerWorker.postMessage({ type: "stop" });
+		roundInfo.running = false;
+		pauseplaybtn.title = "Start Timer";
+		pauseplaybtn.className = "paused";
+		// End session if one is in progress
+		if (roundInfo.currentSessionId) {
+			focusEnd(roundInfo.t);
+		}
+	}
+	
+	// Reset timer state
 	roundInfo.t = 0;
+	roundInfo.remaining = config[roundInfo.current];
+	
+	// Update UI
 	setTime();
+	progress.style.strokeDashoffset = 100; // Reset to start position
+	
+	// Sync state
+	syncTimerState();
 });
 
 document.addEventListener("keydown", (event) => {
@@ -532,185 +644,198 @@ let selectedTask = "Default Task";
 let taskContainer = document.getElementById("task-container");
 let filterContainer = document.getElementById("filters");
 let filteredTasks = new Set();
-let db;
 
 let statTimeSelect = document.getElementById("stat-time-select");
 
-function loadTasks() {
+let hourlyNames = ["0-6", "6-12", "12-18", "18-24"];
+let hourlyFullNames = ["00:00 - 00:06", "06:00 - 12:00", "12:00 - 18:00", "18:00 - 24:00"];
+
+let dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+let monthNames = [
+	"january",
+	"february",
+	"march",
+	"april",
+	"may",
+	"june",
+	"july",
+	"august",
+	"september",
+	"october",
+	"november",
+	"december",
+];
+
+async function loadTasks() {
 	navigator.storage.persist();
-	if (localStorage.getItem("pomo-tasks")) {
-		tasks = JSON.parse(localStorage.getItem("pomo-tasks"));
-		if (!(tasks instanceof Array)) {
-			localStorage.removeItem("pomo-tasks");
-			tasks = ["Default Task"];
+	
+	// Get tasks from Supabase if user is logged in
+	try {
+		const { data: { user } } = await supabase.auth.getUser();
+		if (user) {
+			const { data: remoteTasks } = await getTasks();
+			tasks = remoteTasks?.map(task => task.name) || [];
+		} else {
+			tasks = [];
 		}
+	} catch (error) {
+		console.error('Error loading tasks:', error);
+		tasks = [];
 	}
+
+	// Clear existing tasks UI
+	taskSelect.innerHTML = "";
+	taskContainer.innerHTML = "";
+	filterContainer.innerHTML = "";
+	noTaskManager();
+	tasks.forEach((task) => createTaskEl(task));
+
+	// Initialize selected task with first available task
+	if (tasks.length > 0) {
+		// Get existing timer state first
+		const { data: existingState } = await getTimerState();
+		if (existingState) {
+			// Use existing state
+			selectedTask = existingState.selected_task;
+			if (!tasks.includes(selectedTask)) {
+				selectedTask = tasks[0]; // Fallback if selected task was deleted
+			}
+			// Initialize roundInfo from cloud state
+			roundInfo.current = existingState.current;
+			roundInfo.t = existingState.time;
+			roundInfo.running = existingState.running;
+			roundInfo.focusNum = existingState.focus_num;
+			roundInfo.remaining = existingState.remaining_time;
+			
+			// Update UI
+			roundnoDiv.innerText = roundInfo.focusNum + "/" + config.longGap;
+			timer.className = "t-" + roundInfo.current;
+			setTime();
+
+			// Start worker if timer was running
+			if (existingState.running) {
+				timerWorker.postMessage({
+					type: "start",
+					t: existingState.time,
+					maxDuration: config[existingState.current],
+				});
+			}
+		} else {
+			// No existing state, initialize with first task
+			selectedTask = tasks[0];
+		}
+		taskSelect.value = selectedTask;
+	}
+
 	if (localStorage.getItem("pomo-records")) {
 		let records = JSON.parse(localStorage.getItem("pomo-records"));
 		records.forEach((r) => saveRecord(r));
 		localStorage.removeItem("pomo-records");
 	}
-	if (localStorage.getItem("pomo-selected-task")) {
-		if (tasks.includes(localStorage.getItem("pomo-selected-task"))) {
-			selectedTask = localStorage.getItem("pomo-selected-task");
-			taskSelect.value = selectedTask;
-		}
-	}
+
 	if (localStorage.getItem("pomo-stat-period")) {
 		statTimeSelect.value = localStorage.getItem("pomo-stat-period");
 	}
-	return new Promise((resolve) => {
-		let tr = indexedDB.open("pomo-db", 1);
-		tr.onupgradeneeded = (ev) => {
-			db = ev.target.result;
-			let recordStore = db.createObjectStore("records", { keyPath: "d" });
-			recordStore.createIndex("task", "n", { unique: false });
-			recordStore.transaction.oncomplete = (event) => {
-				resolve();
-			};
-		};
-		tr.onsuccess = (ev) => {
-			db = ev.target.result;
-			resolve();
-		};
-	});
+
+	return Promise.resolve();
 }
 
-async function getRecords(time) {
-	let result = [];
-	return new Promise((resolve) => {
-		if (filteredTasks.size === 0) {
-			resolve(result);
-		} else if (filteredTasks.size === tasks.length) {
-			let tr = db.transaction("records", "readonly").objectStore("records").index("task").getAll();
-			tr.onsuccess = () => resolve(tr.result);
-		} else {
-			let filteredArray = Array.from(filteredTasks);
-			filteredArray.forEach((task, i) => {
-				let tr = db
-					.transaction("records", "readonly")
-					.objectStore("records")
-					.index("task")
-					.getAll(IDBKeyRange.only(task));
-				tr.onsuccess = (ev) => {
-					result.push(...tr.result);
+async function getRecords() {
+    try {
+        const { data: sessions } = await supabase
+            .from('daily_sessions')
+            .select(`
+                *,
+                task:tasks(name)
+            `)
+            .order('start_time', { ascending: false });
 
-					if (i === filteredArray.length - 1) {
-						resolve(result);
-					}
-				};
-			});
-		}
-	});
+        if (!sessions) return [];
+
+        // Filter out invalid records and ensure proper task mapping
+        return sessions
+            .filter(session => 
+                session.actual_duration > 0 && // Only include sessions with actual duration
+                session.task?.name && // Must have a valid task name
+                session.start_time // Must have a start time
+            )
+            .map(session => ({
+                t: Math.max(0, Math.round(session.actual_duration / 60)), // Convert to minutes and ensure non-negative
+                d: new Date(session.start_time).getTime(),
+                n: session.task?.name || 'Unknown Task',
+                notes: session.notes || ''
+            }));
+    } catch (error) {
+        console.error('Error getting records:', error);
+        return [];
+    }
 }
 
-function saveRecord(r) {
-	let tr = db.transaction("records", "readwrite").objectStore("records").add(r);
-	tr.onsuccess = () => console.log("Added new record!");
+// Helper function to format time
+function hmstr(t) {
+    if (!t || t < 0) return '00:00';
+    let h = Math.floor(t / 60);
+    let m = Math.floor(t % 60);
+    return h.toString().padStart(2, "0") + ":" + m.toString().padStart(2, "0");
 }
 
-function deleteRecords(task) {
-	db
-		.transaction("records", "readwrite")
-		.objectStore("records")
-		.index("task")
-		.openCursor(IDBKeyRange.only(task)).onsuccess = (ev) => {
-		let cursor = ev.target.result;
-		if (cursor) {
-			cursor.delete();
-			cursor.continue();
-		}
-	};
-}
-
-function deleteRecord(d) {
-	db.transaction("records", "readwrite").objectStore("records").delete(d);
-}
-
-function saveTasksToLocalStorage() {
-	localStorage.setItem("pomo-tasks", JSON.stringify(tasks));
+function hmstrFull(t) {
+    if (!t || t < 0) t = 0;
+    let r = hmstr(t)
+        .split(":")
+        .map((i) => parseInt(i));
+    if (r[0] === 0) return r[1] + " Minutes";
+    if (r[1] === 0) return r[0] + " Hour" + (r[0] === 1 ? "" : "s");
+    return r[0] + " Hour" + (r[0] > 1 ? "s" : "") + " & " + r[1] + " Minute" + (r[1] > 1 ? "s" : "");
 }
 
 async function focusEnd(t) {
-	let minutes = Math.round(t / 60);
-	if (minutes <= 0) return;
+	if (!roundInfo.currentSessionId) return;
 	
-	if (tasks.includes(selectedTask)) {
-		// Save locally
-		saveRecord({
-			t: minutes,
-			d: Date.now(),
-			n: selectedTask,
+	try {
+		await endSession(roundInfo.currentSessionId, t);
+	} catch (error) {
+		console.error('Error ending session:', error);
+		// Store failed session end in local storage to retry later
+		const failedSessions = JSON.parse(localStorage.getItem('failed_session_ends') || '[]');
+		failedSessions.push({
+			id: roundInfo.currentSessionId,
+			duration: t,
+			timestamp: Date.now()
 		});
-
-		// Save to Supabase if user is authenticated
-		try {
-			const { data: { user } } = await supabase.auth.getUser()
-			if (user) {
-				// Get task ID from name
-				const { data: task } = await getTaskByName(selectedTask)
-				if (!task) throw new Error('Task not found')
-
-				await saveSession({
-					user_id: user.id,
-					duration: minutes,
-					type: 'focus',
-					task_id: task.id,
-					completed: true
-				});
-			}
-		} catch (error) {
-			console.error('Error saving session to Supabase:', error)
-		}
+		localStorage.setItem('failed_session_ends', JSON.stringify(failedSessions));
 	}
+	
+	roundInfo.currentSessionId = null;
 }
 
-document.getElementById("create-backup").addEventListener("click", () => {
-	let tr = db.transaction("records", "readonly").objectStore("records").index("task").getAll();
-	tr.onsuccess = () => {
-		let res = tr.result;
-		let blob = new Blob([JSON.stringify(res)], { type: "application/json" });
-		let url = URL.createObjectURL(blob);
-		let link = document.createElement("a");
-		link.href = url;
-		link.download = "tomodorobackup.json";
-		link.click();
-		setTimeout(() => URL.revokeObjectURL(url), 1000);
-	};
-});
-
-document.getElementById("backup-restore").addEventListener("change", function () {
-	let files = this.files;
-	if (files.length !== 0) {
-		let file = files[0];
-		file.text().then((res) => {
-			try {
-				let dbBackup = JSON.parse(res);
-				let rec = dbBackup.map((r) => {
-					if (!tasks.includes(r.n)) {
-						tasks.push(r.n);
-						createTaskEl(r.n);
-						if (!tasks.includes(selectedTask)) {
-							selectedTask = r.n;
-							taskSelect.value = r.n;
-						}
-					}
-					return { t: r.t, d: r.d, n: r.n };
-				});
-				saveTasksToLocalStorage();
-				noTaskManager();
-				console.log(rec, tasks);
-				let tr = db.transaction("records", "readwrite");
-				tr.oncomplete = () => alert("Backup restored successfully!");
-				let objstore = tr.objectStore("records");
-				rec.forEach((r) => objstore.add(r));
-			} catch (error) {
-				console.log(error);
-				alert("An error occured! Make sure that you are restoring a valid backup file.");
+// Add retry mechanism for failed session ends
+async function retryFailedSessionEnds() {
+	if (!isOnline) return;
+	
+	const failedSessions = JSON.parse(localStorage.getItem('failed_session_ends') || '[]');
+	if (failedSessions.length === 0) return;
+	
+	const newFailedSessions = [];
+	
+	for (const session of failedSessions) {
+		try {
+			await endSession(session.id, session.duration);
+		} catch (error) {
+			console.error('Error retrying session end:', error);
+			// Only keep retrying sessions that failed in the last 24 hours
+			if (Date.now() - session.timestamp < 24 * 60 * 60 * 1000) {
+				newFailedSessions.push(session);
 			}
-		});
+		}
 	}
-});
+	
+	localStorage.setItem('failed_session_ends', JSON.stringify(newFailedSessions));
+}
+
+// Add retry attempts when coming back online
+window.addEventListener('online', retryFailedSessionEnds);
 
 let allCheckbox = document.getElementById("all");
 let pieCardContainer = document.getElementById("pie-card-container");
@@ -728,6 +853,15 @@ let taskBars = {};
 let pieCards = {};
 
 function createTaskEl(task) {
+	const taskEl = document.createElement("div");
+	taskEl.className = "task";
+	taskEl.innerHTML = `
+		<div class="task-name">${task}</div>
+		<button class="task-delete-btn" title="Delete Task">
+			<span class="material-icons-round">delete</span>
+		</button>
+	`;
+	
 	filteredTasks.add(task);
 	let op = document.createElement("option");
 	op.value = op.innerText = task;
@@ -753,22 +887,19 @@ function createTaskEl(task) {
 	chip.append(chipCheckbox, namespan);
 	filterContainer.appendChild(chip);
 
-	taskBars[task] = barGenerator(task);
-	timeSpentChart.appendChild(taskBars[task]);
-
-	pieCards[task] = pieCardGenerator(task);
-	pieCardContainer.appendChild(pieCards[task]);
+	// Only track pie cards now, removed taskBars
+	pieCards[task] = null;
 
 	chipCheckbox.addEventListener("change", function () {
 		if (this.checked) {
 			filteredTasks.add(task);
-			taskBars[task].style.display = "flex";
-			pieCards[task].style.display = "block";
 			if (filteredTasks.size === tasks.length) allCheckbox.checked = true;
 		} else {
 			filteredTasks.delete(task);
-			taskBars[task].style.display = "none";
-			pieCards[task].style.display = "none";
+			if (pieCards[task]) {
+				pieCards[task].remove();
+				pieCards[task] = null;
+			}
 			if (filteredTasks.size < tasks.length) allCheckbox.checked = false;
 		}
 		loadStatistics();
@@ -795,35 +926,34 @@ function createTaskEl(task) {
 					if (error) throw error
 				}
 			}
-		} catch (error) {
-			console.error('Error deleting task from Supabase:', error)
-		}
 
-		// Continue with local deletion
-		tasks.splice(tasks.indexOf(task), 1);
-		op.remove();
-		tel.remove();
-		chip.remove();
-		filteredTasks.delete(task);
-		if (filteredTasks.size === 0) {
-			allCheckbox.checked = false;
-		}
-		if (filteredTasks.size === tasks.length) {
-			allCheckbox.checked = true;
-		}
-		taskBars[task].remove();
-		delete taskBars[task];
-		pieCards[task].remove();
-		delete pieCards[task];
-		if (selectedTask === task) {
-			if (tasks.length > 0) {
-				selectedTask = tasks[0];
-				taskSelect.value = selectedTask;
+			// Update local UI
+			tasks.splice(tasks.indexOf(task), 1);
+			op.remove();
+			tel.remove();
+			chip.remove();
+			filteredTasks.delete(task);
+			if (filteredTasks.size === 0) {
+				allCheckbox.checked = false;
 			}
+			if (filteredTasks.size === tasks.length) {
+				allCheckbox.checked = true;
+			}
+			if (pieCards[task]) {
+				pieCards[task].remove();
+				pieCards[task] = null;
+			}
+			if (selectedTask === task) {
+				if (tasks.length > 0) {
+					selectedTask = tasks[0];
+					taskSelect.value = selectedTask;
+				}
+			}
+			noTaskManager();
+		} catch (error) {
+			console.error('Error deleting task:', error)
+			alert('Failed to delete task')
 		}
-		noTaskManager();
-		deleteRecords(task);
-		saveTasksToLocalStorage();
 	});
 	tel.appendChild(tdel);
 
@@ -852,15 +982,11 @@ async function taskInit() {
 			document.querySelectorAll(".task-checkbox").forEach((el) => (el.checked = true));
 			tasks.forEach((task) => {
 				filteredTasks.add(task);
-				taskBars[task].style.display = "flex";
-				pieCards[task].style.display = "block";
 			});
 		} else {
 			document.querySelectorAll(".task-checkbox").forEach((el) => (el.checked = false));
 			tasks.forEach((task) => {
 				filteredTasks.delete(task);
-				taskBars[task].style.display = "none";
-				pieCards[task].style.display = "none";
 			});
 		}
 		loadStatistics();
@@ -878,41 +1004,64 @@ document.getElementById("newtask").addEventListener("submit", async function (ev
 		this.reset();
 		return;
 	}
-	if (tasks.includes(tname)) {
-		alert("Task already exists!");
-		return;
-	}
 
 	try {
 		// Save to Supabase if user is authenticated and online
 		const { data: { user } } = await supabase.auth.getUser()
 		if (user && isOnline) {
 			const { data, error } = await createTask(tname)
-			if (error) throw error
+			if (error) {
+				if (error.code === '23505') { // Unique violation
+					alert("Task already exists!");
+					return;
+				}
+				throw error;
+			}
+			// Add to local tasks if created successfully
+			tasks.push(tname);
+			createTaskEl(tname);
+			if (!tasks.includes(selectedTask)) {
+				selectedTask = tname;
+				taskSelect.value = tname;
+			}
+			noTaskManager();
+			this.reset();
 		}
 	} catch (error) {
 		console.error('Error saving task to Supabase:', error)
-		// Show offline warning if needed
-		if (!isOnline) {
-			alert('You are offline. Changes will sync when you reconnect.')
-		}
+		alert("Failed to create task. Please try again.");
 	}
-
-	// Continue with local storage
-	tasks.push(tname);
-	createTaskEl(tname);
-	if (!tasks.includes(selectedTask)) {
-		selectedTask = tname;
-		taskSelect.value = tname;
-	}
-	saveTasksToLocalStorage();
-	noTaskManager();
-	this.reset();
 });
 
-taskSelect.addEventListener("change", function () {
+taskSelect.addEventListener("change", async function () {
+	const previousTask = selectedTask;
 	selectedTask = this.value;
-	localStorage.setItem("pomo-selected-task", selectedTask);
+	
+	// Store current timer state
+	const currentState = {
+		current: roundInfo.current,
+		t: roundInfo.t,
+		running: roundInfo.running,
+		focusNum: roundInfo.focusNum,
+		remaining: roundInfo.remaining
+	};
+	
+	try {
+		await updateSelectedTask(selectedTask);
+		
+		// Restore timer state after task update
+		roundInfo.current = currentState.current;
+		roundInfo.t = currentState.t;
+		roundInfo.running = currentState.running;
+		roundInfo.focusNum = currentState.focusNum;
+		roundInfo.remaining = currentState.remaining;
+		
+		setTime(); // Update display without advancing round
+	} catch (error) {
+		console.error('Error updating selected task:', error);
+		selectedTask = previousTask;
+		this.value = previousTask;
+	}
 });
 
 let format = new Intl.DateTimeFormat(undefined, {
@@ -947,40 +1096,63 @@ function pieCardGenerator(task) {
 	return el;
 }
 
-function barGenerator(task) {
-	let taskBarContainer = document.createElement("div");
-	taskBarContainer.className = "task-bar-container";
-	let legend = document.createElement("div");
-	legend.className = "legend";
-	legend.innerText = task;
-	let barContainer = document.createElement("div");
-	barContainer.className = "bar-container";
-	let bar = document.createElement("div");
-	bar.className = "bar";
-	barContainer.appendChild(bar);
-	let tooltip = document.createElement("div");
-	tooltip.className = "tooltip";
-	tooltip.innerText = task;
-	let valueEl = document.createElement("div");
-	valueEl.className = "stat-value";
-	bar.append(tooltip, valueEl);
-	taskBarContainer.append(legend, barContainer);
-	taskBarContainer.dataset.task = task;
-	return taskBarContainer;
+function barGenerator(task, record = null) {
+    let bar = document.createElement("div");
+    bar.className = "bar";
+    
+    let barName = document.createElement("div");
+    barName.className = "bar-name";
+    barName.innerText = task;
+    
+    let barTime = document.createElement("div");
+    barTime.className = "bar-time";
+    
+    let statValue = document.createElement("div");
+    statValue.className = "stat-value";
+    barTime.appendChild(statValue);
+    
+    bar.append(barName, barTime);
+    
+    // Add notes if they exist
+    if (record && record.notes) {
+        let barNotes = document.createElement("div");
+        barNotes.className = "bar-notes";
+        barNotes.innerText = record.notes;
+        bar.appendChild(barNotes);
+    }
+    
+    return bar;
 }
 
 function roundEntryGen(entry) {
 	let roundEntry = document.createElement("div");
 	roundEntry.className = "round-entry";
+	
+	let roundEntryHeader = document.createElement("div");
+	roundEntryHeader.className = "round-entry-header";
+	
 	let roundEntryName = document.createElement("div");
 	roundEntryName.className = "round-entry-name";
 	roundEntryName.innerText = entry.n;
-	let roundEntryDuration = document.createElement("round-entry-duration");
+	
+	let roundEntryDuration = document.createElement("div");
 	roundEntryDuration.className = "round-entry-duration";
 	roundEntryDuration.innerText = hmstrFull(entry.t);
+	
 	let roundEntryTime = document.createElement("div");
 	roundEntryTime.className = "round-entry-time";
 	roundEntryTime.innerText = format.format(entry.d);
+	
+	roundEntryHeader.append(roundEntryName, roundEntryDuration, roundEntryTime);
+	roundEntry.appendChild(roundEntryHeader);
+	
+	if (entry.notes) {
+		let roundEntryNotes = document.createElement("div");
+		roundEntryNotes.className = "round-entry-notes";
+		roundEntryNotes.innerText = entry.notes;
+		roundEntry.appendChild(roundEntryNotes);
+	}
+	
 	let entryDelete = document.createElement("button");
 	entryDelete.className = "entry-delete";
 	entryDelete.innerText = "Delete";
@@ -991,37 +1163,12 @@ function roundEntryGen(entry) {
 		roundEntry.remove();
 		loadStatistics(false);
 	});
-	roundEntry.append(roundEntryName, roundEntryDuration, roundEntryTime, entryDelete);
+	
+	roundEntry.appendChild(entryDelete);
 	return roundEntry;
 }
 
-let hourlyNames = ["0-6", "6-12", "12-18", "18-24"];
-
-let hourlyFullNames = ["00:00 - 00:06", "06:00 - 12:00", "12:00 - 18:00", "18:00 - 24:00"];
-
-let hourlyBars = hourlyNames.map((d) => document.getElementById("hourly-" + d));
-
-let dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-
-let dayBars = dayNames.map((d) => document.getElementById("day-" + d));
-
-let monthNames = [
-	"january",
-	"february",
-	"march",
-	"april",
-	"may",
-	"june",
-	"july",
-	"august",
-	"september",
-	"october",
-	"november",
-	"december",
-];
-
-let monthBars = monthNames.map((d) => document.getElementById("month-" + d));
-
+// Get references to stat summary elements
 let pieSVG = document.querySelector("#pie svg");
 let statSummaryTotal = document.getElementById("stat-summary-total");
 let statSummaryRounds = document.getElementById("stat-summary-rounds");
@@ -1034,210 +1181,423 @@ let remarkMonthly = document.getElementById("remark-monthly");
 let remarkDaily = document.getElementById("remark-daily");
 let roundEntries = document.getElementById("round-entries");
 
+// Create statistics containers dynamically
+function createStatBars() {
+    const timeSpentChart = document.getElementById("timespent");
+    if (!timeSpentChart) return; // Guard against missing element
+
+    timeSpentChart.innerHTML = ''; // Clear existing
+
+    // Create hourly bars
+    const hourlyContainer = document.createElement('div');
+    hourlyContainer.className = 'stat-section';
+    hourlyContainer.innerHTML = '<h3>Time Spent per 6 Hours:</h3>';
+    hourlyNames.forEach(name => {
+        const barContainer = document.createElement('div');
+        barContainer.className = 'task-bar-container';
+        
+        const legend = document.createElement('div');
+        legend.className = 'legend';
+        legend.innerText = hourlyFullNames[hourlyNames.indexOf(name)];
+        
+        const barWrapper = document.createElement('div');
+        barWrapper.className = 'bar-container';
+        
+        const bar = document.createElement('div');
+        bar.id = `hourly-${name}`;
+        bar.className = 'bar';
+        bar.style.width = '0%';
+        
+        const statValue = document.createElement('div');
+        statValue.className = 'stat-value';
+        statValue.innerText = '00:00';
+        bar.appendChild(statValue);
+        
+        barWrapper.appendChild(bar);
+        barContainer.append(legend, barWrapper);
+        hourlyContainer.appendChild(barContainer);
+    });
+    timeSpentChart.appendChild(hourlyContainer);
+
+    // Create daily bars
+    const dailyContainer = document.createElement('div');
+    dailyContainer.className = 'stat-section';
+    dailyContainer.innerHTML = '<h3>Time Spent per Day:</h3>';
+    dayNames.forEach(name => {
+        const barContainer = document.createElement('div');
+        barContainer.className = 'task-bar-container';
+        
+        const legend = document.createElement('div');
+        legend.className = 'legend';
+        legend.innerText = name.charAt(0).toUpperCase() + name.slice(1);
+        
+        const barWrapper = document.createElement('div');
+        barWrapper.className = 'bar-container';
+        
+        const bar = document.createElement('div');
+        bar.id = `day-${name}`;
+        bar.className = 'bar';
+        bar.style.width = '0%';
+        
+        const statValue = document.createElement('div');
+        statValue.className = 'stat-value';
+        statValue.innerText = '00:00';
+        bar.appendChild(statValue);
+        
+        barWrapper.appendChild(bar);
+        barContainer.append(legend, barWrapper);
+        dailyContainer.appendChild(barContainer);
+    });
+    timeSpentChart.appendChild(dailyContainer);
+
+    // Create monthly bars
+    const monthlyContainer = document.createElement('div');
+    monthlyContainer.className = 'stat-section';
+    monthlyContainer.innerHTML = '<h3>Time Spent per Month:</h3>';
+    monthNames.forEach(name => {
+        const barContainer = document.createElement('div');
+        barContainer.className = 'task-bar-container';
+        
+        const legend = document.createElement('div');
+        legend.className = 'legend';
+        legend.innerText = name.charAt(0).toUpperCase() + name.slice(1);
+        
+        const barWrapper = document.createElement('div');
+        barWrapper.className = 'bar-container';
+        
+        const bar = document.createElement('div');
+        bar.id = `month-${name}`;
+        bar.className = 'bar';
+        bar.style.width = '0%';
+        
+        const statValue = document.createElement('div');
+        statValue.className = 'stat-value';
+        statValue.innerText = '00:00';
+        bar.appendChild(statValue);
+        
+        barWrapper.appendChild(bar);
+        barContainer.append(legend, barWrapper);
+        monthlyContainer.appendChild(barContainer);
+    });
+    timeSpentChart.appendChild(monthlyContainer);
+}
+
+// Call this when initializing statistics
+createStatBars();
+
+let lastUpdate = null;
+let lastSyncTime = 0;
+const SYNC_THROTTLE = 1000; // Minimum time between syncs in ms
+
+async function syncTimerState() {
+	const now = Date.now();
+	if (now - lastSyncTime < SYNC_THROTTLE) return;
+	
+	lastSyncTime = now;
+	lastUpdate = new Date().toISOString();
+	
+	try {
+		await updateTimerState({
+			current: roundInfo.current,
+			t: roundInfo.t,
+			duration: config[roundInfo.current],
+			running: roundInfo.running,
+			focusNum: roundInfo.focusNum,
+			selectedTask
+		});
+	} catch (error) {
+		console.error('Error syncing timer state:', error);
+		// If we're offline, don't keep trying to sync
+		if (!isOnline) return;
+	}
+}
+
 async function loadStatistics(updateEntryCards = true) {
-	let timeValue = statTimeSelect.value;
-	let rec = await getRecords();
-	if (!(timeValue === "all")) {
-		if (parseInt(timeValue) === 0) {
-			// Today
-			// Get the current date without the time component
-			const currentDate = new Date();
-			currentDate.setHours(0, 0, 0, 0);
+    // Create/update the bar containers for time distribution
+    createStatBars();
+    
+    // Get records
+    let rec = await getRecords();
+    let timeValue = statTimeSelect.value;
+    
+    // Get references to the bar elements
+    const hourlyBars = hourlyNames.map(name => document.getElementById(`hourly-${name}`));
+    const dayBars = dayNames.map(name => document.getElementById(`day-${name}`));
+    const monthBars = monthNames.map(name => document.getElementById(`month-${name}`));
+    
+    if (!rec || rec.length === 0) {
+        // Clear summary stats and time distribution bars
+        if (statSummaryTotal) statSummaryTotal.innerText = "0 Minutes";
+        if (statSummaryRounds) statSummaryRounds.innerText = "0";
+        if (statSummaryAverage) statSummaryAverage.innerText = "0 Minutes";
+        if (statSummaryShortest) statSummaryShortest.innerText = "0 Minutes";
+        if (statSummaryLongest) statSummaryLongest.innerText = "0 Minutes";
+        
+        hourlyBars.forEach(bar => {
+            if (bar) {
+                const statValue = bar.querySelector('.stat-value');
+                if (statValue) statValue.innerText = '00:00';
+                bar.style.width = '0%';
+            }
+        });
+        
+        dayBars.forEach(bar => {
+            if (bar) {
+                const statValue = bar.querySelector('.stat-value');
+                if (statValue) statValue.innerText = '00:00';
+                bar.style.width = '0%';
+            }
+        });
+        
+        monthBars.forEach(bar => {
+            if (bar) {
+                const statValue = bar.querySelector('.stat-value');
+                if (statValue) statValue.innerText = '00:00';
+                bar.style.width = '0%';
+            }
+        });
+        
+        // Clear pie chart
+        if (pieSVG) pieSVG.innerHTML = '';
+        if (pieCardContainer) pieCardContainer.innerHTML = '';
+        
+        return;
+    }
 
-			// Calculate the start and end timestamps for the current day
-			const startOfDay = currentDate.getTime();
-			const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+    // Filter records based on time period
+    const now = new Date();
+    const dayInMs = 24 * 60 * 60 * 1000;
+    const timeFilter = (date) => {
+        const d = new Date(date);
+        switch (timeValue) {
+            case "0": // Today
+                const today = new Date();
+                return d.getDate() === today.getDate() && 
+                       d.getMonth() === today.getMonth() && 
+                       d.getFullYear() === today.getFullYear();
+            case "1": // Past Day
+                return now - d <= dayInMs;
+            case "7": // Past Week
+                return now - d <= 7 * dayInMs;
+            case "365": // Past Year
+                return now - d <= 365 * dayInMs;
+            case "all": // All Time
+                return true;
+            default:
+                return true;
+        }
+    };
+    
+    // Filter records by time period and ensure they have actual duration
+    rec = rec.filter(r => timeFilter(r.d) && r.t > 0);
+    
+    // Get unique tasks that have valid records in the selected time period
+    const tasksWithRecords = new Set(rec.map(r => r.n));
+    
+    // Create pie cards for tasks with records
+    tasksWithRecords.forEach(task => {
+        if (!pieCards[task]) {
+            pieCards[task] = pieCardGenerator(task);
+            pieCardContainer.appendChild(pieCards[task]);
+        }
+    });
+    
+    // Initialize aggregation variables
+    let charts = [];
+    let maxvalue = 0;
+    let minRoundValue = Infinity;
+    let maxRoundValue = 0;
+    let totalValue = 0;
+    let hourlyTimes = new Array(4).fill(0);
+    let dayTimes = new Array(7).fill(0);
+    let monthTimes = new Array(12).fill(0);
+    
+    // Process records for each task
+    for (let task of filteredTasks) {
+        let chart = {
+            t: 0,
+            task: task,
+            n: 0,
+        };
+        
+        // Filter records for this task
+        const taskRecords = rec.filter(r => r.n === task);
+        taskRecords.forEach(r => {
+            chart.t += r.t;
+            totalValue += r.t;
+            let d = new Date(r.d);
+            hourlyTimes[Math.floor(d.getHours() / 6)] += r.t;
+            dayTimes[d.getDay()] += r.t;
+            monthTimes[d.getMonth()] += r.t;
+            chart.n++;
+            if (r.t > 0) { // Only consider non-zero durations for min/max
+                minRoundValue = Math.min(minRoundValue, r.t);
+                maxRoundValue = Math.max(maxRoundValue, r.t);
+            }
+        });
+        
+        if (chart.t > 0) { // Only add tasks with non-zero total time
+            maxvalue = Math.max(maxvalue, chart.t);
+            charts.push(chart);
+        }
+    }
 
-			rec = rec.filter((r) => {
-				// Check if the task is within the current day
-				return r.d >= startOfDay && r.d < endOfDay && filteredTasks.has(r.n);
-			});
-		} else {
-			let tt = Date.now() - parseInt(timeValue) * 24 * 60 * 60 * 1000;
-			rec = rec.filter((r) => r.d >= tt && filteredTasks.has(r.n));
-		}
-	}
-	let charts = [];
-	let maxvalue = 0;
-	let minRoundValue = 0;
-	let maxRoundValue = 0;
-	let totalValue = 0;
-	let hourlyTimes = new Array(4).fill(0);
-	let dayTimes = new Array(7).fill(0);
-	let monthTimes = new Array(12).fill(0);
-	for (let task of filteredTasks) {
-		let chart = {
-			t: 0,
-			task: task,
-			n: 0,
-		};
-		rec.filter((r) => r.n === task).forEach((r) => {
-			chart.t += r.t;
-			totalValue += r.t;
-			let d = new Date(r.d);
-			hourlyTimes[Math.floor(d.getHours() / 6)] += r.t;
-			dayTimes[d.getDay()] += r.t;
-			monthTimes[d.getMonth()] += r.t;
-			chart.n++;
-			if (minRoundValue === 0) {
-				minRoundValue = r.t;
-			} else {
-				minRoundValue = minRoundValue > r.t ? r.t : minRoundValue;
-			}
-			maxRoundValue = maxRoundValue < r.t ? r.t : maxRoundValue;
-		});
-		maxvalue = maxvalue < chart.t ? chart.t : maxvalue;
+    // Update summary stats
+    if (statSummaryTotal) statSummaryTotal.innerText = hmstrFull(totalValue);
+    if (statSummaryRounds) statSummaryRounds.innerText = rec.length.toString();
+    if (statSummaryAverage) statSummaryAverage.innerText = hmstrFull(totalValue / (rec.length || 1));
+    if (statSummaryShortest) statSummaryShortest.innerText = hmstrFull(minRoundValue === Infinity ? 0 : minRoundValue);
+    if (statSummaryLongest) statSummaryLongest.innerText = hmstrFull(maxRoundValue);
 
-		charts.push(chart);
-	}
-	statSummaryTotal.innerText = hmstrFull(totalValue);
-	statSummaryRounds.innerText = rec.length;
-	statSummaryAverage.innerText = hmstrFull(totalValue / (rec.length === 0 ? 1 : rec.length));
-	statSummaryShortest.innerText = hmstrFull(minRoundValue);
-	statSummaryLongest.innerText = hmstrFull(maxRoundValue);
+    // Update remarks visibility and content
+    if (totalValue === 0) {
+        if (remarkDaily) remarkDaily.style.display = "none";
+        if (remarkHourly) remarkHourly.style.display = "none";
+        if (remarkMonthly) remarkMonthly.style.display = "none";
+    } else {
+        if (remarkDaily) remarkDaily.style.display = "block";
+        if (remarkHourly) remarkHourly.style.display = "block";
+        if (remarkMonthly) remarkMonthly.style.display = "block";
 
-	if (totalValue === 0) {
-		remarkDaily.style.display = remarkHourly.style.display = remarkMonthly.style.display = "none";
-	} else {
-		remarkDaily.style.display = remarkHourly.style.display = remarkMonthly.style.display = "block";
-		let maxH = 1;
-		let maxHV = 0;
-		hourlyTimes.forEach((v, i) => {
-			if (v > maxHV) {
-				maxHV = v;
-				maxH = i;
-			}
-		});
-		remarkHourly.querySelector(".remark-value").innerText = hourlyFullNames[maxH];
+        // Update hourly remark
+        let maxH = hourlyTimes.reduce((iMax, x, i, arr) => x > arr[iMax] ? i : iMax, 0);
+        if (remarkHourly) {
+            const remarkValue = remarkHourly.querySelector(".remark-value");
+            if (remarkValue) remarkValue.innerText = hourlyFullNames[maxH];
+        }
 
-		let maxD = 1;
-		let maxDV = 0;
-		dayTimes.forEach((v, i) => {
-			if (v > maxDV) {
-				maxDV = v;
-				maxD = i;
-			}
-		});
-		remarkDaily.querySelector(".remark-value").innerText = dayNames[maxD] + "s";
+        // Update daily remark
+        let maxD = dayTimes.reduce((iMax, x, i, arr) => x > arr[iMax] ? i : iMax, 0);
+        if (remarkDaily) {
+            const remarkValue = remarkDaily.querySelector(".remark-value");
+            if (remarkValue) remarkValue.innerText = dayNames[maxD] + "s";
+        }
 
-		let maxM = 1;
-		let maxMV = 0;
-		monthTimes.forEach((v, i) => {
-			if (v > maxMV) {
-				maxMV = v;
-				maxM = i;
-			}
-		});
-		remarkMonthly.querySelector(".remark-value").innerText = monthNames[maxM];
-	}
+        // Update monthly remark
+        let maxM = monthTimes.reduce((iMax, x, i, arr) => x > arr[iMax] ? i : iMax, 0);
+        if (remarkMonthly) {
+            const remarkValue = remarkMonthly.querySelector(".remark-value");
+            if (remarkValue) remarkValue.innerText = monthNames[maxM];
+        }
+    }
 
-	pieSVG.innerHTML = "";
-	let sumOfPrev = 0;
-	charts
-		.sort((a, b) => b.t - a.t)
-		.forEach((chart, i) => {
-			taskBars[chart.task].querySelector(".stat-value").innerText = hmstr(chart.t);
-			taskBars[chart.task].querySelector(".bar").style.width = (chart.t / maxvalue) * 100 + "%";
-			taskBars[chart.task].style.order = i + 1;
-			pieCards[chart.task].style.order = i + 1;
-			pieCards[chart.task].querySelector(".pie-card-time").innerText = `${(
-				(chart.t / (totalValue === 0 ? 1 : totalValue)) *
-				100
-			).toFixed(2)}%`;
-			pieCards[chart.task].querySelector(".pie-card-time-text").innerText = hmstrFull(chart.t);
-			pieCards[chart.task].querySelector(".pie-card-rounds-span").innerText = chart.n;
+    // Update bar charts
+    const hourlyMax = Math.max(1, ...hourlyTimes);
+    hourlyTimes.forEach((t, i) => {
+        const bar = hourlyBars[i];
+        if (bar) {
+            const statValue = bar.querySelector('.stat-value');
+            if (statValue) statValue.innerText = hmstr(t);
+            bar.style.width = t > 0 ? (t / hourlyMax * 100) + "%" : "0%";
+        }
+    });
 
-			let pie = document.createElementNS("http://www.w3.org/2000/svg", "path");
-			let a = (sumOfPrev / totalValue) * Math.PI * 2;
+    const dayMax = Math.max(1, ...dayTimes);
+    dayTimes.forEach((t, i) => {
+        const bar = dayBars[i];
+        if (bar) {
+            const statValue = bar.querySelector('.stat-value');
+            if (statValue) statValue.innerText = hmstr(t);
+            bar.style.width = t > 0 ? (t / dayMax * 100) + "%" : "0%";
+        }
+    });
 
-			let p1 = [60 + Math.sin(a) * 50, 60 - Math.cos(a) * 50];
-			let b = ((sumOfPrev + chart.t) / totalValue) * Math.PI * 2;
+    const monthMax = Math.max(1, ...monthTimes);
+    monthTimes.forEach((t, i) => {
+        const bar = monthBars[i];
+        if (bar) {
+            const statValue = bar.querySelector('.stat-value');
+            if (statValue) statValue.innerText = hmstr(t);
+            bar.style.width = t > 0 ? (t / monthMax * 100) + "%" : "0%";
+        }
+    });
 
-			let p2 = [60 + Math.sin(b) * 50, 60 - Math.cos(b) * 50];
+    // Update pie chart
+    if (pieSVG) {
+        pieSVG.innerHTML = "";
+        let sumOfPrev = 0;
+        charts
+            .sort((a, b) => b.t - a.t)
+            .forEach((chart, i) => {
+                const taskBar = taskBars[chart.task];
+                const pieCard = pieCards[chart.task];
+                
+                if (taskBar) {
+                    const statValue = taskBar.querySelector(".stat-value");
+                    if (statValue) statValue.innerText = hmstr(chart.t);
+                    taskBar.style.width = (chart.t / maxvalue * 100) + "%";
+                    taskBar.style.order = i + 1;
+                }
+                
+                if (pieCard) {
+                    pieCard.style.order = i + 1;
+                    const timeEl = pieCard.querySelector(".pie-card-time");
+                    const timeTextEl = pieCard.querySelector(".pie-card-time-text");
+                    const roundsEl = pieCard.querySelector(".pie-card-rounds-span");
+                    
+                    if (timeEl) timeEl.innerText = `${((chart.t / (totalValue || 1)) * 100).toFixed(2)}%`;
+                    if (timeTextEl) timeTextEl.innerText = hmstrFull(chart.t);
+                    if (roundsEl) roundsEl.innerText = chart.n.toString();
+                }
 
-			let normal = (a + b) / 2;
-			if (totalValue === chart.t) {
-				pie.setAttribute("d", `M60,10 A50 50 0 1 1 60 110 A50 50 0 1 1 60 10 z`);
-				pie.dataset.circle = true;
-			} else {
-				pie.setAttribute(
-					"d",
-					`M60,60 L${p1.join(",")} A50 50 0 ${b - a > Math.PI ? 1 : 0} 1 ${p2.join(" ")} L60,60 z`
-				);
-			}
-			let title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-			title.innerHTML = `${chart.task} ${((chart.t / (totalValue === 0 ? 1 : totalValue)) * 100).toFixed(2)}%`;
-			pie.appendChild(title);
-			pie.dataset.normal = normal;
-			pie.dataset.task = chart.task;
-			pie.addEventListener("pointerenter", pathPointerEnter);
-			pie.addEventListener("pointerleave", pathPointerLeave);
-			pieSVG.appendChild(pie);
-			sumOfPrev += chart.t;
-		});
+                if (chart.t > 0) {
+                    let pie = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    let a = (sumOfPrev / (totalValue || 1)) * Math.PI * 2;
+                    let p1 = [60 + Math.sin(a) * 50, 60 - Math.cos(a) * 50];
+                    let b = ((sumOfPrev + chart.t) / (totalValue || 1)) * Math.PI * 2;
+                    let p2 = [60 + Math.sin(b) * 50, 60 - Math.cos(b) * 50];
+                    let normal = (a + b) / 2;
+                    
+                    if (totalValue === chart.t) {
+                        pie.setAttribute("d", `M60,10 A50 50 0 1 1 60 110 A50 50 0 1 1 60 10 z`);
+                        pie.dataset.circle = true;
+                    } else {
+                        pie.setAttribute(
+                            "d",
+                            `M60,60 L${p1.join(",")} A50 50 0 ${b - a > Math.PI ? 1 : 0} 1 ${p2.join(" ")} L60,60 z`
+                        );
+                    }
+                    
+                    let title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+                    title.innerHTML = chart.task + " " + ((chart.t / (totalValue || 1)) * 100).toFixed(2) + "%";
+                    pie.appendChild(title);
+                    pie.dataset.normal = normal;
+                    pie.dataset.task = chart.task;
+                    pie.addEventListener("pointerenter", pathPointerEnter);
+                    pie.addEventListener("pointerleave", pathPointerLeave);
+                    pieSVG.appendChild(pie);
+                    sumOfPrev += chart.t;
+                }
+            });
+    }
 
-	let hourlyMax = 1;
-	hourlyTimes.forEach((t) => (hourlyMax = hourlyMax < t ? t : hourlyMax));
-	hourlyTimes.forEach((t, i) => {
-		hourlyBars[i].querySelector(".stat-value").innerText = hmstr(t);
-		hourlyBars[i].style.width = (t / hourlyMax) * 100 + "%";
-	});
-
-	let dayMax = 1;
-	dayTimes.forEach((t) => (dayMax = dayMax < t ? t : dayMax));
-	dayTimes.forEach((t, i) => {
-		dayBars[i].querySelector(".stat-value").innerText = hmstr(t);
-		dayBars[i].style.width = (t / dayMax) * 100 + "%";
-	});
-
-	let monthMax = 1;
-	monthTimes.forEach((t) => (monthMax = monthMax < t ? t : monthMax));
-	monthTimes.forEach((t, i) => {
-		monthBars[i].querySelector(".stat-value").innerText = hmstr(t);
-		monthBars[i].style.width = (t / monthMax) * 100 + "%";
-	});
-
-	if (updateEntryCards) {
-		roundEntries.innerHTML = "";
-		rec.sort((a, b) => b.d - a.d).forEach((e) => {
-			roundEntries.appendChild(roundEntryGen(e));
-		});
-	}
+    // Update round entries
+    if (updateEntryCards && roundEntries) {
+        roundEntries.innerHTML = "";
+        rec.sort((a, b) => b.d - a.d).forEach((e) => {
+            roundEntries.appendChild(roundEntryGen(e));
+        });
+    }
 }
 
 function pathPointerEnter(ev) {
 	let el = pieCards[ev.target.dataset.task];
 	if (!ev.target.dataset.circle) {
 		let a = parseFloat(ev.target.dataset.normal);
-		ev.target.style.transform = `translate(${Math.sin(a) * 5}px, ${-Math.cos(a) * 5}px)`;
+		ev.target.style.transform = "translate(" + Math.sin(a) * 5 + "px, " + (-Math.cos(a) * 5) + "px)";
 	}
 	pieCardContainer.scrollTo({
 		left: el.offsetLeft,
 		top: el.offsetTop,
-		behavior: "smooth",
+		behavior: "smooth"
 	});
 	el.classList.add("pie-card-active");
 }
 
 function pathPointerLeave(ev) {
 	let el = pieCards[ev.target.dataset.task];
-	ev.target.style.transform = `translate(0px, 0px)`;
+	ev.target.style.transform = "translate(0px, 0px)";
 	el.classList.remove("pie-card-active");
-}
-
-function hmstr(t) {
-	let h = Math.floor(t / 60);
-	let m = t - h * 60;
-	return h.toString().padStart(2, "0") + ":" + m.toString().padStart(2, "0");
-}
-
-function hmstrFull(t) {
-	let r = hmstr(t)
-		.split(":")
-		.map((i) => parseInt(i));
-	if (r[0] === 0) return r[1] + " Minutes";
-	if (r[1] === 0) return r[0] + " Hour" + (r[0] === 1 ? "" : "s");
-	return `${r[0]} Hour${r[0] > 1 ? "s" : ""} & ${r[1]} Minute${r[1] > 1 ? "s" : ""}`;
 }
 
 //#endregion
@@ -1825,98 +2185,126 @@ if (savedNo !== versionNo) {
 // Add auth state listener
 supabase.auth.onAuthStateChange((event, session) => {
 	if (event === 'SIGNED_IN') {
-		// Sync data from Supabase
-		syncFromSupabase()
-		syncSessions()
-		startPeriodicSync()
-		// Subscribe to timer changes
+		// Initialize DB first, then sync
+		loadTasks().then(async () => {
+			await clearLocalData();
+			await syncFromSupabase();
+			await syncSessions();
+		});
+		startPeriodicSync();
+		
+		// Subscribe to timer changes with reconnection handling
 		let timerStateSubscription;
-		subscribeToTimerState(async (payload) => {
-			if (payload.new.updated_at === lastUpdate) return
-			
-			const state = payload.new
-			roundInfo.current = state.current
-			roundInfo.running = state.running
-			roundInfo.focusNum = state.focus_num
-			roundInfo.t = state.time ?? (config[state.current] - state.remaining_time)
-			roundInfo.remaining = state.remaining_time
-			
-			if (state.selected_task && tasks.includes(state.selected_task)) {
-				selectedTask = state.selected_task
-				taskSelect.value = selectedTask
+		const setupSubscription = async () => {
+			if (timerStateSubscription) {
+				await timerStateSubscription.unsubscribe();
 			}
 			
-			// Update round display
-			roundnoDiv.innerText = roundInfo.focusNum + "/" + config.longGap;
-			timer.className = "t-" + roundInfo.current;
-			setTime()
-			if (state.running) {
-				timerWorker.postMessage({
-					type: "start",
-					maxDuration: config[roundInfo.current],
-					t: roundInfo.t
-				})
-				roundInfo.running = true
-				pauseplaybtn.title = "Pause Timer"
-				pauseplaybtn.className = "playing"
-			} else {
-				timerWorker.postMessage({ type: "stop" })
-				roundInfo.running = false
-				pauseplaybtn.title = "Start Timer"
-				pauseplaybtn.className = "paused"
-			}
-		}).then(subscription => {
-			timerStateSubscription = subscription
-		})
-
+			timerStateSubscription = await subscribeToTimerState(async (payload) => {
+				// Ignore our own updates
+				if (payload.new.updated_at === lastUpdate) return;
+				
+				const state = payload.new;
+				// Only update if the state is newer than our current state
+				if (lastUpdate && new Date(state.updated_at) <= new Date(lastUpdate)) return;
+				
+				roundInfo.current = state.current;
+				roundInfo.running = state.running;
+				roundInfo.focusNum = state.focus_num;
+				roundInfo.t = state.time;
+				roundInfo.remaining = state.remaining_time;
+				
+				if (state.selected_task && tasks.includes(state.selected_task)) {
+					selectedTask = state.selected_task;
+					taskSelect.value = selectedTask;
+				}
+				
+				// Update round display
+				roundnoDiv.innerText = roundInfo.focusNum + "/" + config.longGap;
+				timer.className = "t-" + roundInfo.current;
+				setTime();
+				
+				// Update play/pause button state to match actual state
+				pauseplaybtn.className = state.running ? "playing" : "paused";
+				pauseplaybtn.title = state.running ? "Pause Timer" : "Start Timer";
+				
+				if (state.running) {
+					const duration = config[state.current];
+					const elapsedTime = state.time || 0;
+					timerWorker.postMessage({
+						type: "start",
+						t: elapsedTime,
+						maxDuration: duration,
+						sync: true
+					});
+				} else {
+					timerWorker.postMessage({ type: "stop" });
+				}
+			});
+		};
+		
+		setupSubscription();
+		
+		// Handle reconnection
+		window.addEventListener('online', setupSubscription);
+		
 		// Get initial timer state
 		getTimerState().then(state => {
 			if (state) {
-				roundInfo.current = state.current
-				roundInfo.t = state.time
-				roundInfo.running = state.running
-				roundInfo.focusNum = state.focus_num
-				roundInfo.remaining = state.remaining_time
+				roundInfo.current = state.current;
+				roundInfo.t = state.time;
+				roundInfo.running = state.running;
+				roundInfo.focusNum = state.focus_num;
+				roundInfo.remaining = state.remaining_time;
 				if (state.selected_task && tasks.includes(state.selected_task)) {
-					selectedTask = state.selected_task
-					taskSelect.value = selectedTask
+					selectedTask = state.selected_task;
+					taskSelect.value = selectedTask;
 				}
-				setTime()
-				roundnoDiv.innerText = roundInfo.focusNum + "/" + config.longGap
-				timer.className = "t-" + roundInfo.current
+				setTime();
+				roundnoDiv.innerText = roundInfo.focusNum + "/" + config.longGap;
+				timer.className = "t-" + roundInfo.current;
 			}
-		})
+		});
 	} else if (event === 'SIGNED_OUT') {
-		stopPeriodicSync()
+		stopPeriodicSync();
 		if (timerStateSubscription) {
-			timerStateSubscription.unsubscribe()
+			timerStateSubscription.unsubscribe();
 		}
+		window.removeEventListener('online', setupSubscription);
 	}
-})
+});
 
 // Add sync function
 async function syncFromSupabase() {
 	if (isSyncing) return;
 	isSyncing = true;
+	showSyncIndicator();
 
 	try {
 		const { data: remoteTasks } = await getTasks()
-		if (remoteTasks) {
-			// Merge remote tasks with local tasks
-			remoteTasks.forEach(task => {
-				if (!tasks.includes(task.name)) {
-					tasks.push(task.name)
-					createTaskEl(task.name)
-				}
-			})
-			saveTasksToLocalStorage()
-		}
+		// Just use whatever tasks we got from the server
+		tasks = remoteTasks?.map(task => task.name) || [];
+		// Clear existing UI elements before recreating
+		taskSelect.innerHTML = "";
+		taskContainer.innerHTML = "";
+		filterContainer.innerHTML = "";
+		filteredTasks.clear();  // Clear the filtered tasks set
+		Object.keys(taskBars).forEach(key => {
+			if (taskBars[key]) taskBars[key].remove();
+		});
+		Object.keys(pieCards).forEach(key => {
+			if (pieCards[key]) pieCards[key].remove();
+		});
+		taskBars = {};
+		pieCards = {};
+		tasks.forEach(task => createTaskEl(task));
 		return true
 	} catch (error) {
 		console.error('Error syncing tasks:', error)
 		return false
 	} finally {
-		isSyncing = false
+		isSyncing = false;
+		hideSyncIndicator();
 	}
 }
 
@@ -1924,68 +2312,26 @@ async function syncFromSupabase() {
 async function syncSessions() {
 	if (isSyncing) return;
 	isSyncing = true;
+	showSyncIndicator();
 
 	try {
-		// Get last sync time or default to 30 days ago
-		const lastSync = localStorage.getItem('last-session-sync') || 
-			new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-		
-		// Get remote sessions since last sync
-		const { data: remoteSessions, error } = await getSessionsAfter(lastSync)
-		if (error) throw error
-
-		// Get local sessions since last sync
-		const localSessions = await getRecords()
-		const recentLocalSessions = localSessions.filter(s => 
-			new Date(s.d) > new Date(lastSync)
-		)
-
-		// Convert local sessions to Supabase format and upload
 		const { data: { user } } = await supabase.auth.getUser()
-		if (user && recentLocalSessions.length > 0) {
-			const sessionsToUpload = await Promise.all(
-				recentLocalSessions.map(async s => {
-					const { data: task } = await getTaskByName(s.n)
-					if (!task) return null // Skip if task not found
-					return {
-						user_id: user.id,
-						task_id: task.id,
-						duration: s.t,
-						type: 'focus',
-						completed: true,
-						created_at: new Date(s.d).toISOString()
-					}
-				})
-			)
-			
-			// Filter out null entries and upload
-			const validSessions = sessionsToUpload.filter(s => s !== null)
-			if (validSessions.length > 0) {
-				await bulkSaveSessions(validSessions)
-			}
-		}
+		if (!user) return false
 
-		// Save remote sessions to IndexedDB
-		if (remoteSessions) {
-			for (const session of remoteSessions) {
-				if (session.task) {
-					await saveRecord({
-						t: session.duration,
-						d: new Date(session.created_at).getTime(),
-						n: session.task.name
-					})
-				}
-			}
-		}
+		// Get sessions from Supabase
+		const { data: remoteSessions } = await supabase
+			.from('daily_sessions')
+			.select('*, task:task_id(name)')
+			.order('start_time', { ascending: false })
+			.gte('start_time', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()); // Last 30 days
 
-		// Update last sync time
-		localStorage.setItem('last-session-sync', new Date().toISOString())
 		return true
 	} catch (error) {
 		console.error('Error syncing sessions:', error)
 		return false
 	} finally {
-		isSyncing = false
+		isSyncing = false;
+		hideSyncIndicator();
 	}
 }
 
@@ -1995,11 +2341,8 @@ createAuthUI()
 // Add sync indicator
 const syncIndicator = document.createElement('div')
 syncIndicator.className = 'sync-indicator'
-syncIndicator.innerHTML = `
-  <div class="sync-spinner"></div>
-  <span>Syncing...</span>
-`
-document.body.appendChild(syncIndicator)
+syncIndicator.innerHTML = '<div class="sync-spinner"></div><span>Syncing...</span>';
+document.body.appendChild(syncIndicator);
 
 function showSyncIndicator() {
   syncIndicator.classList.add('active')
@@ -2026,16 +2369,51 @@ function stopPeriodicSync() {
   clearInterval(syncInterval)
 }
 
-let lastUpdate = null
+// Function to clear local data
+async function clearLocalData() {
+	return Promise.resolve();
+}
 
-async function syncTimerState() {
-  lastUpdate = new Date().toISOString()
-  await updateTimerState({
-    current: roundInfo.current,
-    t: roundInfo.t,
-    duration: config[roundInfo.current],
-    running: roundInfo.running,
-    focusNum: roundInfo.focusNum,
-    selectedTask
-  })
+async function saveTasksToSupabase(tasks) {
+	const { data: { user } } = await supabase.auth.getUser()
+	if (!user) return;  // Don't try to save if not authenticated
+
+	try {
+		const { data, error } = await saveTasks(tasks)
+		if (error) throw error
+		return data
+	} catch (error) {
+		console.error('Error saving tasks:', error)
+		// Show offline warning if needed
+		if (!isOnline) {
+			console.warn('You are offline. Changes will sync when you reconnect.')
+		}
+	}
+}
+
+// Add new function to only update selected task
+export async function updateSelectedTask(taskName) {
+	const { data: { user } } = await supabase.auth.getUser();
+	if (!user) {
+		console.warn('Must be logged in to update selected task');
+		return null;
+	}
+	
+	try {
+		const existingState = await getTimerState();
+		
+		const timerState = {
+			current: existingState?.current || 'focus',
+			t: existingState?.time || 0,
+			duration: config[existingState?.current || 'focus'],
+			running: existingState?.running || false,
+			focusNum: existingState?.focus_num || 1,
+			selectedTask: taskName
+		};
+		
+		return await updateTimerState(timerState);
+	} catch (error) {
+		console.error('Error updating selected task:', error);
+		return null;
+	}
 }

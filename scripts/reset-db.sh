@@ -20,10 +20,18 @@ if [ -z "$SUPABASE_DB_PASSWORD" ]; then
     exit 1
 fi
 
-echo "Linking project..."
+echo "Running database reset..."
+
+# Link to Supabase project
+echo "Linking to Supabase project..."
 supabase link --project-ref $PROJECT_REF --password $SUPABASE_DB_PASSWORD
 
-echo "Pushing migrations..."
+# Mark all migrations as reverted
+echo "Repairing migration history..."
+supabase migration repair --status reverted 0000
+
+# Push our schema
+echo "Pushing schema..."
 supabase db push
 
-echo "Migration complete!" 
+echo "Reset complete!" 

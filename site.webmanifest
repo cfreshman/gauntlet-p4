@@ -1,8 +1,8 @@
 {
-    "name": "Tomodoro",
-    "short_name": "Tomodoro",
+    "name": "Gomodoro",
+    "short_name": "Gomodoro",
     "start_url": "/",
-    "description": "A pomodoro timer for the web",
+    "description": "AI-enhanced Pomodoro timer for focused productivity",
     "icons": [
         {
             "src": "./icons/icon192.png",

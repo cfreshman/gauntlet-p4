@@ -574,7 +574,6 @@ menubtn.addEventListener("click", () => {
 			menu.style.display = "none";
 		};
 		menubtn.title = "Open Settings";
-		menubtn.classList.remove("cross");
 		viewState = "timer";
 	} else {
 		if (viewState !== "timer") return;
@@ -582,7 +581,6 @@ menubtn.addEventListener("click", () => {
 		menu.scroll({ top: 0 });
 		lastanim = menu.animate(animations.in, animations.animoptions);
 		lastanim.onfinish = () => (mainel.style.display = "none");
-		menubtn.classList.add("cross");
 		menubtn.title = "Close Settings";
 		viewState = "menu";
 	}
@@ -2417,3 +2415,16 @@ export async function updateSelectedTask(taskName) {
 		return null;
 	}
 }
+
+document.getElementById("closemenu").addEventListener("click", () => {
+	if (lastanim) lastanim.cancel();
+	if (viewState === "menu") {
+		mainel.style.display = "flex";
+		lastanim = menu.animate(animations.out, animations.animoptions);
+		lastanim.onfinish = () => {
+			menu.style.display = "none";
+		};
+		menubtn.title = "Open Settings";
+		viewState = "timer";
+	}
+});

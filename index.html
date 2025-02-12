@@ -10,25 +10,29 @@
 		<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon.png" />
 		<link rel="manifest" href="./site.webmanifest" />
 		<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-		<meta name="theme-color" id="theme-meta" content="#222233" />
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+		<meta name="theme-color" id="theme-meta" content="#1a1a2e" />
 	</head>
 	<body>
-		<button id="menubtn" title="Open Settings">
-			<span class="material-icons-round">menu</span>
-		</button>
-		<div id="taskswitcher">
-			<button id="statbtn" title="View Statistics">
-				<span class="material-icons-round">bar_chart</span>
+		<nav class="top-nav">
+			<button id="menubtn" title="Open Settings" class="icon-button">
+				<span class="material-icons-round">menu</span>
 			</button>
-			<select name="task" id="task-select" title="Switch Task"></select>
-			<div id="no-task-title" title="No Task Found">Gomodoro</div>
-			<button id="managetaskbtn" title="Manage Task">
-				<span class="material-icons-round">edit</span>
+			<div id="taskswitcher">
+				<button id="statbtn" title="View Statistics" class="icon-button">
+					<span class="material-icons-round">bar_chart</span>
+				</button>
+				<select name="task" id="task-select" title="Switch Task"></select>
+				<div id="no-task-title" title="No Task Found">Gomodoro</div>
+				<button id="managetaskbtn" title="Manage Task" class="icon-button">
+					<span class="material-icons-round">edit</span>
+				</button>
+			</div>
+			<button id="popupbtn" title="Toggle PIP Mode" class="icon-button">
+				<span class="material-icons-round">picture_in_picture</span>
 			</button>
-		</div>
-		<button id="popupbtn" title="Toggle PIP Mode">
-			<span class="material-icons-round">picture_in_picture</span>
-		</button>
+		</nav>
+		
 		<main id="main">
 			<div id="timer" class="t-focus">
 				<svg id="ring" viewbox="0 0 100 100">
@@ -47,26 +51,34 @@
 					<span class="material-icons-round paused">play_circle</span>
 				</button>
 			</div>
-			<button id="resetround" title="Reset Current Timer">
-				<span class="material-icons-round">replay</span>
-			</button>
-			<div id="roundno" title="Number of Focus Rounds"></div>
-			<div id="slider-container">
-				<div id="slider-overlay" class="disabled">
-					<span id="volume-value">80</span>
-					<input type="range" orient="vertical" id="volume-slider" min="0" max="100" step="1" value="80" />
+			
+			<div class="controls-container">
+				<button id="resetround" title="Reset Current Timer" class="control-button">
+					<span class="material-icons-round">replay</span>
+				</button>
+				<div id="roundno" title="Number of Focus Rounds"></div>
+				<div id="slider-container">
+					<div id="slider-overlay" class="disabled">
+						<span id="volume-value">80</span>
+						<input type="range" orient="vertical" id="volume-slider" min="0" max="100" step="1" value="80" />
+					</div>
+					<button id="volume-button" title="Adjust White Noise Volume" class="control-button">
+						<span id="volume-icon" class="material-icons-round">volume_up</span>
+						<span id="volume-muted-icon" class="material-icons-round">volume_off</span>
+					</button>
 				</div>
-				<button id="volume-button" title="Adjust White Noise Volume">
-					<span id="volume-icon" class="material-icons-round">volume_up</span>
-					<span id="volume-muted-icon" class="material-icons-round">volume_off</span>
+				<button id="next" title="Next Round" class="control-button">
+					<span class="material-icons-round">skip_next</span>
 				</button>
 			</div>
-			<button id="next" title="Next Round">
-				<span class="material-icons-round">skip_next</span>
-			</button>
 		</main>
 		<div id="menu" class="scrollbar">
-			<div class="menu-title">Gomodoro</div>
+			<div class="menu-title">
+				Gomodoro
+				<button id="closemenu" title="Close Settings">
+					<span class="material-icons-round">close</span>
+				</button>
+			</div>
 			<div class="content">
 				<section class="section">
 					<h2>Timer</h2>
@@ -191,7 +203,9 @@
 		<div id="statistics" class="scrollbar">
 			<div class="menu-title">
 				Statistics
-				<button id="closestats" class="crossbtn" title="Close Statistics"></button>
+				<button id="closestats" title="Close Statistics">
+					<span class="material-icons-round">close</span>
+				</button>
 			</div>
 			<div class="content">
 				<div class="setting">
@@ -253,7 +267,9 @@
 		<div id="managetasks" class="scrollbar">
 			<div class="menu-title">
 				Tasks
-				<button id="closetasks" class="crossbtn" title="Return to main screen"></button>
+				<button id="closetasks" title="Return to main screen">
+					<span class="material-icons-round">close</span>
+				</button>
 			</div>
 			<div class="content">
 				<h2>Your Tasks</h2>

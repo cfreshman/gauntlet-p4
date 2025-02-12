@@ -2,7 +2,7 @@
 	box-sizing: border-box;
 	margin: 0;
 	padding: 0;
-	font-family: "Consolas", monospace;
+	font-family: "Inter", system-ui, -apple-system, sans-serif;
 }
 
 button, select, input, label {
@@ -10,17 +10,14 @@ button, select, input, label {
 }
 
 :root {
-	--bgcolor: #222233;
-	--bgcolor2: #333344;
-	--color: #ddddff;
-	--coloraccent: #b2b2ff;
-	--focus: #d64f4f;
-	--short: #26baba;
-	--long: #5fbbe6;
+	--bgcolor: #111111;
+	--bgcolor2: #1c1c1c;
+	--color: #ffffff;
+	--coloraccent: #4d79ff;
+	--focus: #ff6b6b;
+	--short: #4ecdc4;
+	--long: #45b7d1;
 	color-scheme: dark;
-	--bg-light: var(--bgcolor2);
-	--border: var(--color);
-	--accent: var(--coloraccent);
 }
 
 body {
@@ -32,7 +29,6 @@ body {
 	justify-content: center;
 	background-color: var(--bgcolor);
 	color: var(--color);
-	font-family: "Consolas", monospace;
 }
 
 #main {
@@ -66,7 +62,7 @@ body {
 	height: 48px;
 	background-color: transparent;
 	cursor: pointer;
-	z-index: 20;
+	z-index: 20002;
 	top: 0;
 	left: 0;
 	display: flex;
@@ -74,16 +70,8 @@ body {
 	justify-content: center;
 }
 
-#menubtn::before, #menubtn::after {
-	display: none;
-}
-
-#menubtn.cross::before {
-	transform: rotate(45deg);
-}
-
-#menubtn.cross::after {
-	transform: rotate(135deg);
+#menubtn .material-icons-round {
+	display: block;
 }
 
 #title {
@@ -99,38 +87,40 @@ body {
 
 #timer {
 	position: relative;
-	width: 70vmin;
-	height: 70vmin;
+	width: 400px;
+	height: 400px;
 	border-radius: 50%;
-	flex-grow: 0;
+	background-color: var(--bgcolor2);
 	display: flex;
 	flex-direction: column;
-	flex-wrap: nowrap;
 	align-items: center;
 	justify-content: center;
 	overflow: hidden;
+}
+
+#timer:hover {
+	transform: none;
 }
 
 #ring {
 	position: absolute;
 	top: 0;
 	left: 0;
-	width: 70vmin;
-	height: 70vmin;
+	width: 100%;
+	height: 100%;
 	transform: rotate(-90deg);
-	pointer-events: none;
 }
 
 #secondary {
-	stroke: var(--coloraccent);
-	stroke-width: 1px;
+	stroke: rgba(255, 255, 255, 0.1);
+	stroke-width: 4px;
 }
 
 #progress {
 	stroke-width: 4px;
-	stroke-dasharray: 100.15;
-	stroke-dashoffset: 0;
-	transition: stroke-dashoffset 1000ms linear;
+	stroke-linecap: round;
+	stroke-dasharray: 100;
+	stroke-dashoffset: 100;
 }
 
 .t-focus #progress {
@@ -146,24 +136,31 @@ body {
 }
 
 #time {
-	font-size: 15vmin;
-	padding-top: 3vmin;
+	font-size: 64px;
+	font-weight: 300;
+	letter-spacing: 2px;
+	margin-bottom: 8px;
+	text-align: center;
 }
 
 #status {
-	font-size: 6vmin;
-	padding-top: 3vmin;
+	font-size: 16px;
 	text-transform: uppercase;
-	display: grid;
-	grid-template-areas: "area";
+	letter-spacing: 4px;
+	font-weight: 400;
+	opacity: 0.5;
 	text-align: center;
-	user-select: none;
+	width: 100%;
+	position: relative;
 }
 
 #status span {
 	opacity: 0;
-	grid-area: area;
-	transition: opacity 300ms;
+	position: absolute;
+	width: 100%;
+	left: 0;
+	top: 0;
+	text-align: center;
 }
 
 .t-focus #s-focus,
@@ -173,23 +170,29 @@ body {
 }
 
 #pauseplay {
-	margin-top: 2vmin;
-	width: 15vmin;
-	height: 15vmin;
-	background-color: var(--bgcolor);
-	transition: background-color 300ms;
+	margin-top: 24px;
+	width: 64px;
+	height: 64px;
+	background-color: transparent;
 	border: none;
 	border-radius: 50%;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
+	transition: opacity 0.2s ease;
 	position: relative;
-	z-index: 2;
+	z-index: 10;
+}
+
+#pauseplay:hover {
+	opacity: 0.8;
 }
 
 #pauseplay .material-icons-round {
-	font-size: 96px;
+	font-size: 48px;
+	color: var(--color);
+	pointer-events: none;
 }
 
 #pauseplay.paused .playing {
@@ -208,11 +211,6 @@ body {
 	transition: fill 300ms;
 	width: 15vmin;
 	height: 15vmin;
-}
-
-#pauseplay:hover #playing,
-#pauseplay:hover #paused {
-	fill: var(--coloraccent);
 }
 
 #pauseplay.playing #playing,
@@ -237,11 +235,13 @@ body {
 }
 
 #roundno {
-	position: fixed;
-	bottom: 10px;
-	left: auto;
-	right: auto;
-	font-size: 22px;
+	font-size: 14px;
+	font-weight: 400;
+	color: var(--color);
+	opacity: 0.5;
+	padding: 8px 16px;
+	min-width: 80px;
+	text-align: center;
 }
 
 #resetround {
@@ -249,17 +249,10 @@ body {
 	right: auto;
 }
 
-#slider-overlay{
-	display: none;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	text-align: center;
-	gap: 5px;
-	width: 54px;
-	position: absolute;
-	bottom: 64px;
-	right: 64px;
+#slider-overlay {
+	background-color: var(--bgcolor2);
+	border-radius: 8px;
+	padding: 12px;
 }
 
 #slider-container:focus-within #slider-overlay {
@@ -287,30 +280,33 @@ body {
 }
 
 #volume-slider {
-	height: 120px;
-	outline: none;
-	appearance: slider-vertical;
-	writing-mode: bt-lr;
-	accent-color: var(--coloraccent);
+	appearance: none;
+	background-color: rgba(255, 255, 255, 0.1);
+	border-radius: 4px;
+	height: 100px;
+	width: 4px;
 }
 
 #volume-button {
-	bottom: 0;
-	right: 64px;
+	width: 54px;
+	height: 54px;
 }
 
-#volume-button .svg-icon {
-	width: 40px;
-	height: 40px;
+#volume-button .material-icons-round {
+	font-size: 32px;
 }
 
-#menu {
+#volume-button .material-icons-round:hover {
+	color: var(--coloraccent);
+}
+
+#menu, #managetasks, #statistics {
 	width: 100vw;
 	height: 100vh;
 	position: fixed;
 	top: 0;
 	left: 0;
-	z-index: 10;
+	z-index: 10000;
 	flex-direction: column;
 	flex-wrap: nowrap;
 	align-items: center;
@@ -319,12 +315,19 @@ body {
 	background-color: var(--bgcolor);
 }
 
-.content {
+#menu .content, #managetasks .content {
 	width: 100%;
 	max-width: 800px;
 	display: flex;
 	flex-direction: column;
 	flex-wrap: nowrap;
+	padding: 0 15px 15px 15px;
+}
+
+#statistics .content {
+	width: 100%;
+	max-width: 1000px;
+	display: block;
 	padding: 0 15px 15px 15px;
 }
 
@@ -339,9 +342,32 @@ body {
 	font-size: 32px;
 	position: sticky;
 	top: 0;
-	z-index: 2;
-	left: 0;
+	z-index: 10001;
 	box-shadow: 0 2px 5px 0px rgba(0, 0, 0, 0.4);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+#closemenu, #closetasks, #closestats {
+	position: absolute;
+	width: 54px;
+	height: 54px;
+	top: 0;
+	right: 0;
+	z-index: 10002;
+	background-color: var(--bgcolor);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	border: none;
+}
+
+#closemenu .material-icons-round,
+#closetasks .material-icons-round,
+#closestats .material-icons-round {
+	font-size: 32px;
 }
 
 .section {
@@ -439,24 +465,30 @@ h3 {
 }
 
 .hover-shadow {
-	transition: box-shadow 0.3s;
+	transition: none;
 }
 
 .hover-shadow:hover {
-	box-shadow: 0px 2px 5px 1px rgba(0, 0, 0, 0.4);
+	box-shadow: none;
 }
 
 .button-link {
-	padding: 5px 10px;
+	padding: 10px 20px;
 	text-decoration: none;
-	border: medium solid var(--coloraccent);
-	font-size: 18px;
+	background-color: var(--coloraccent);
+	color: var(--bgcolor);
+	font-size: 16px;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	border-radius: 4px;
-	margin-right: 10px;
-	margin-bottom: 10px;
+	border-radius: 6px;
+	margin-right: 12px;
+	margin-bottom: 12px;
+	border: none;
+}
+
+.button-link:hover {
+	background-color: var(--color);
 }
 
 .button-link img {
@@ -516,7 +548,7 @@ video.pipactive {
 	background-color: var(--bgcolor);
 	padding: 20px;
 	overflow: hidden scroll;
-	z-index: 20;
+	z-index: 20000;
 	box-shadow: 0 0 25px 10px rgba(0, 0, 0, 0.8);
 }
 
@@ -524,6 +556,8 @@ video.pipactive {
 	max-width: 800px;
 	margin: auto;
 	font-size: 1.2em;
+	position: relative;
+	z-index: 20001;
 }
 
 #new-list {
@@ -556,13 +590,19 @@ video.pipactive {
 	cursor: pointer;
 }
 
-#taskswitcher button, #closetasks, #closestats {
+#taskswitcher button, #closetasks, #closestats, #closemenu {
 	width: 54px;
 	height: 54px;
-	position: relative;
 	border: none;
 	background-color: transparent;
 	cursor: pointer;
+}
+
+#closetasks, #closestats {
+	position: absolute;
+	top: 0;
+	right: 0;
+	z-index: 1001;
 }
 
 #statbtn {
@@ -593,47 +633,28 @@ video.pipactive {
 	left: 36px;
 }
 
-.crossbtn::before, .crossbtn::after {
-	content: "";
-	position: absolute;
-	top: 15px;
-	left: 28px;
-	width: 4px;
-	height: 30px;
-	border-radius: 5px;
-	background-color: var(--color);
-	transition: background-color 0.5s;
-}
-
-.crossbtn:hover::before, .crossbtn:hover::after {
-	background-color: var(--coloraccent);
-}
-
 #taskswitcher {
-	position: fixed;
-	top: 0;
-	left: 48px;
-	width: calc(100vw - 96px);
-	height: 54px;
 	display: flex;
 	align-items: center;
-	justify-content: center;
-	z-index: 2;
+	gap: 16px;
+	margin: 0 auto;
 }
 
 #task-select {
-	padding: 5px 2px;
-	font-size: 24px;
-	color: var(--coloraccent);
-	background-color: var(--bgcolor);
-	border: 2px solid var(--coloraccent);
-	border-radius: 5px;
+	padding: 8px 16px;
+	font-size: 16px;
+	color: var(--color);
+	background-color: transparent;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 8px;
 	outline: none;
-	max-width: calc(100vw - 192px);
-	margin: 0 5px;
-	text-align: center;
+	min-width: 200px;
 	cursor: pointer;
-	text-overflow: ellipsis;
+	transition: all 0.2s ease;
+}
+
+#task-select:hover {
+	border-color: rgba(255, 255, 255, 0.2);
 }
 
 #no-task-title {
@@ -686,7 +707,7 @@ video.pipactive {
 	position: fixed;
 	top: 0;
 	left: 0;
-	z-index: 30;
+	z-index: 10000;
 	flex-direction: column;
 	flex-wrap: nowrap;
 	align-items: center;
@@ -700,20 +721,6 @@ video.pipactive {
 	max-width: 1000px;
 }
 
-#closetasks, #closestats {
-	position: absolute;
-	top: 0;
-	right: 0;
-}
-
-.crossbtn::before {
-	transform: rotate(45deg);
-}
-
-.crossbtn::after {
-	transform: rotate(135deg);
-}
-
 #task-container {
 	width: 100%;
 	padding: 10px;
@@ -721,24 +728,22 @@ video.pipactive {
 
 .task {
 	width: 100%;
-	border: 3px solid var(--bgcolor2);
-	border-radius: 10px;
+	border: none;
+	background-color: var(--bgcolor2);
+	border-radius: 8px;
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
 	min-height: 60px;
 	align-items: center;
 	overflow: hidden;
-	margin: 5px 0;
-	padding: 2px;
+	margin: 10px 0;
+	padding: 12px;
 }
 
-#newtask {
-	border-color: var(--coloraccent);
-	position: sticky;
-	bottom: 5px;
-	background-color: var(--bgcolor);
-	box-shadow: 0px 0px 10px 2px rgba(0, 0, 0, 0.4);
+.task:hover {
+	transform: translateY(-2px);
+	box-shadow: 5px 8px 20px rgba(0, 0, 0, 0.15);
 }
 
 .task-name {
@@ -815,17 +820,21 @@ video.pipactive {
 
 .task-chip {
 	background-color: var(--bgcolor2);
-	padding: 5px 20px;
-	border-radius: 30px;
+	padding: 8px 20px;
+	border-radius: 6px;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
 	user-select: none;
-	margin: 0 6px;
+	margin: 0 8px;
 	scroll-snap-align: start end;
 	scroll-margin: 5px;
 	width: max-content;
+}
+
+.task-chip:hover {
+	background-color: var(--bgcolor);
 }
 
 .task-chip input {
@@ -1300,9 +1309,8 @@ video.pipactive {
 }
 
 .material-icons-round {
-	font-size: 48px;
+	font-size: 24px;
 	color: var(--color);
-	transition: color 300ms;
 	user-select: none;
 }
 
@@ -1331,8 +1339,9 @@ button:hover .material-icons-round {
 }
 
 #volume-button {
-	bottom: 0;
-	right: 64px;
+	position: static;
+	width: 48px;
+	height: 48px;
 }
 
 #volume-button .svg-icon {
@@ -1351,11 +1360,11 @@ button:hover .material-icons-round {
 /* Add responsive sizing for mobile */
 @media (max-width: 768px) {
 	.material-icons-round {
-		font-size: 36px;
+		font-size: 28px;
 	}
 	
 	#pauseplay .material-icons-round {
-		font-size: 64px;
+		font-size: 72px;
 	}
 	
 	#volume-button .material-icons-round {
@@ -1377,3 +1386,148 @@ button:hover .material-icons-round {
 	display: inline-block;
 	margin-bottom: 1rem;
 }
+
+.top-nav {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 70px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 20px;
+	z-index: 1000;
+}
+
+.icon-button {
+	width: 40px;
+	height: 40px;
+	border-radius: 8px;
+	border: none;
+	background-color: transparent;
+	color: var(--color);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	opacity: 0.5;
+	transition: opacity 0.2s ease;
+}
+
+.icon-button:hover {
+	opacity: 1;
+}
+
+.controls-container {
+	position: fixed;
+	bottom: 32px;
+	left: 0;
+	right: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 32px;
+	padding: 0 24px;
+}
+
+.control-button {
+	width: 48px;
+	height: 48px;
+	border-radius: 12px;
+	border: none;
+	background-color: transparent;
+	color: var(--color);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	opacity: 0.5;
+	transition: opacity 0.2s ease;
+}
+
+.control-button:hover {
+	opacity: 1;
+}
+
+.control-button .material-icons-round {
+	font-size: 28px;
+}
+
+#roundno {
+	font-size: 16px;
+	font-weight: 500;
+	color: var(--color);
+	background-color: transparent;
+	padding: 12px 24px;
+	min-width: 100px;
+	text-align: center;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	border-radius: 12px;
+}
+
+#volume-button {
+	position: static;
+	width: 48px;
+	height: 48px;
+}
+
+#volume-button .material-icons-round {
+	font-size: 28px;
+}
+
+#slider-overlay {
+	position: absolute;
+	bottom: 64px;
+	background-color: var(--bgcolor2);
+	border-radius: 12px;
+	padding: 16px;
+	display: none;
+}
+
+#slider-container:hover #slider-overlay,
+#slider-container:focus-within #slider-overlay {
+	display: flex;
+}
+
+#volume-slider {
+	appearance: none;
+	background-color: rgba(255, 255, 255, 0.1);
+	border-radius: 4px;
+	height: 120px;
+	width: 4px;
+}
+
+#volume-slider::-webkit-slider-thumb {
+	appearance: none;
+	width: 12px;
+	height: 12px;
+	background-color: var(--color);
+	border-radius: 50%;
+	cursor: pointer;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+	.controls-container {
+		bottom: 24px;
+		gap: 24px;
+	}
+
+	.control-button {
+		width: 40px;
+		height: 40px;
+	}
+
+	.control-button .material-icons-round {
+		font-size: 24px;
+	}
+
+	#roundno {
+		font-size: 14px;
+		padding: 10px 20px;
+		min-width: 90px;
+	}
+}
+
+/* ... existing code ... */

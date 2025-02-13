@@ -24,11 +24,12 @@ export function TaskManager() {
     return () => observer.disconnect()
   }, [])
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    if (!newTaskName.trim()) return
+    const trimmedName = newTaskName.trim()
+    if (!trimmedName) return
     
-    addTask(newTaskName)
+    await addTask(trimmedName)
     setNewTaskName('')
   }
 
@@ -39,35 +40,50 @@ export function TaskManager() {
       onClose={() => setIsOpen(false)}
       isOpen={isOpen}
     >
-      <h2>Your Tasks</h2>
-
-      <div id="task-container">
-        {tasks.map(task => (
-          <div key={task.id} className="task">
-            <div className="task-name">{task.title}</div>
-            <IconButton
-              title="Delete Task"
-              icon="delete"
-              onClick={() => deleteTask(task.id)}
-            />
+      {tasks.length > 0 ? (
+        <>
+          <div className="task-count">
+            {tasks.length} task{tasks.length !== 1 ? 's' : ''}
           </div>
-        ))}
-      </div>
+          <div id="task-container">
+            {tasks.map(task => (
+              <div key={task.id} className="task">
+                <div className="task-name">{task.title}</div>
+                <span 
+                  className="material-icons-round"
+                  onClick={() => deleteTask(task.id)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  delete
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="empty-state">
+          <span className="material-icons-round">task</span>
+          <div>No tasks yet</div>
+          <div>Create a task to get started</div>
+        </div>
+      )}
 
       <form id="newtask" className="task" onSubmit={handleSubmit}>
         <input
-          id="new-task-name"
-          name="taskname"
           type="text"
           maxLength="25"
-          placeholder="Add New Task"
+          placeholder="Add new task"
           className="task-input"
           value={newTaskName}
           onChange={(e) => setNewTaskName(e.target.value)}
         />
-        <button type="submit" title="Create new task" id="new-task-btn">
-          <span className="material-icons-round">add</span>
-        </button>
+        <span 
+          className="material-icons-round"
+          onClick={handleSubmit}
+          style={{ cursor: 'pointer' }}
+        >
+          add
+        </span>
       </form>
     </PageLayout>
   )

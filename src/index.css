@@ -134,6 +134,15 @@ select, input, textarea {
 	transition: border-color 0.2s;
 }
 
+/* Override for checkboxes and radios */
+input[type="checkbox"],
+input[type="radio"] {
+	width: auto;
+	padding: 0;
+	margin: 0;
+	accent-color: var(--coloraccent);
+}
+
 select:hover, input:hover, textarea:hover {
 	border-color: var(--coloraccent);
 }

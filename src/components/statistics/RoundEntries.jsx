@@ -1,80 +1,73 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '../../../supabase-client'
+import { useEffect, useState } from 'react';
+import { supabase } from '../../../supabase-client';
 
-export function RoundEntries() {
-  const [entries, setEntries] = useState([])
+export default function RoundEntries({ selectedTasks }) {
+  const [entries, setEntries] = useState([]);
 
   useEffect(() => {
-    async function fetchEntries() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+    if (!selectedTasks?.length) {
+      setEntries([]);
+      return;
+    }
 
+    const fetchEntries = async () => {
       const { data, error } = await supabase
-        .from('daily_sessions')
-        .select(`
-          *,
-          task:tasks(name)
-        `)
-        .order('start_time', { ascending: false })
-        .limit(10)
+        .from('focus_rounds')
+        .select('*')
+        .in('task_id', selectedTasks)
+        .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching entries:', error)
-        return
+        console.error('Error fetching entries:', error);
+        return;
       }
 
-      setEntries(data || [])
-    }
+      setEntries(data || []);
+    };
 
-    fetchEntries()
-  }, [])
+    fetchEntries();
+  }, [selectedTasks]);
 
-  function formatTime(seconds) {
-    const minutes = Math.floor(seconds / 60)
-    return `${minutes} minutes`
-  }
-
-  async function handleDelete(id) {
+  const handleDelete = async (id) => {
     const { error } = await supabase
-      .from('daily_sessions')
+      .from('focus_rounds')
       .delete()
-      .match({ id })
+      .eq('id', id);
 
     if (error) {
-      console.error('Error deleting entry:', error)
-      return
+      console.error('Error deleting entry:', error);
+      return;
     }
 
-    setEntries(entries.filter(entry => entry.id !== id))
-  }
+    setEntries(entries.filter(entry => entry.id !== id));
+  };
+
+  const formatTime = (minutes) => `${minutes}m`;
+
+  if (!entries.length) return null;
 
   return (
-    <details id="stat-details">
-      <summary><h2>Focus Round Records</h2></summary>
+    <div id="stat-details">
       <div id="round-entries">
         {entries.map(entry => (
-          <div key={entry.id} className="round-entry">
-            <div className="round-entry-header">
-              <div className="round-entry-name">{entry.task?.name || 'Deleted Task'}</div>
-              <div className="round-entry-duration">
-                {formatTime(entry.actual_duration)}
-              </div>
+          <div key={entry.id} className="entry-row">
+            <div className="entry-main">
+              <div className="entry-task">{entry.task_name}</div>
+              {entry.notes && <div className="entry-notes">{entry.notes}</div>}
+              <div className="entry-time">{new Date(entry.created_at).toLocaleString()}</div>
             </div>
-            <div className="round-entry-time">
-              {new Date(entry.start_time).toLocaleString()}
+            <div className="entry-side">
+              <div className="entry-duration">{formatTime(entry.duration)}</div>
+              <button 
+                className="entry-delete"
+                onClick={() => handleDelete(entry.id)}
+              >
+                <span className="material-icons-round">delete</span>
+              </button>
             </div>
-            {entry.notes && (
-              <div className="round-entry-notes">{entry.notes}</div>
-            )}
-            <button 
-              className="entry-delete"
-              onClick={() => handleDelete(entry.id)}
-            >
-              Delete Entry
-            </button>
           </div>
         ))}
       </div>
-    </details>
-  )
+    </div>
+  );
 } 

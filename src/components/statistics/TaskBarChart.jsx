@@ -8,7 +8,24 @@ export function TaskBarChart({ data }) {
     return `${minutes}m`
   }
 
-  const maxTime = Math.max(...data.map(item => item.time))
+  // Handle empty data or all zero values
+  const maxTime = Math.max(...data.map(item => item.time || 0), 0)
+  if (maxTime === 0) {
+    return (
+      <div id="timespent" className="stat-chart scrollbar">
+        {data.map((item, index) => (
+          <div key={index} className="task-bar-container">
+            <div className="legend">{item.name}</div>
+            <div className="bar-container">
+              <div className="bar" style={{ width: '0%' }}>
+                <span className="bar-value">0m</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div id="timespent" className="stat-chart scrollbar">
@@ -19,11 +36,11 @@ export function TaskBarChart({ data }) {
             <div 
               className="bar"
               style={{ 
-                width: `${(item.time / maxTime) * 100}%`,
+                width: `${((item.time || 0) / maxTime) * 100}%`,
                 backgroundColor: `hsl(${(index * 360) / data.length}, 70%, 60%)`
               }}
             >
-              <div className="tooltip">{formatTime(item.time)}</div>
+              <span className="bar-value">{formatTime(item.time || 0)}</span>
             </div>
           </div>
         </div>

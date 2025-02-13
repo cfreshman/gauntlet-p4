@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTaskStore } from '../../store/taskStore'
 import { PageLayout } from '../common/PageLayout'
-import { PieChart } from './PieChart'
 import { TaskBarChart } from './TaskBarChart'
 import { RoundEntries } from './RoundEntries'
 import { supabase } from '../../../supabase-client'
@@ -61,6 +60,12 @@ export function Statistics() {
   async function fetchStats() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+
+    // If no tasks are selected, show no data
+    if (!selectedTasks.length) {
+      setStats(DEFAULT_STATS)
+      return
+    }
 
     // Calculate date range
     const now = new Date()
@@ -166,59 +171,64 @@ export function Statistics() {
       onClose={() => setIsOpen(false)}
       isOpen={isOpen}
     >
-      <div className="setting">
-        <h3>Show Statistics of:</h3>
-        <div id="filters" className="scrollbar">
-          <label className="task-chip">
-            <input
-              type="checkbox"
-              id="all"
-              checked={selectedTasks.includes('all')}
-              onChange={(e) => {
-                if (e.target.checked) {
-                  setSelectedTasks(['all'])
-                } else {
-                  setSelectedTasks([])
-                }
-              }}
-            />
-            <span className="chip-task-name">All Tasks</span>
-          </label>
-          {tasks.map(task => (
-            <label key={task.id} className="task-chip">
+      <div className="statistics-filters">
+        <div className="filter-group">
+          <label>Time Period</label>
+          <select 
+            value={selectedPeriod} 
+            onChange={(e) => setSelectedPeriod(e.target.value)}
+          >
+            {Object.entries(TIME_PERIODS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label>Show Statistics</label>
+          <div id="filters">
+            <label className="task-chip">
               <input
                 type="checkbox"
-                checked={selectedTasks.includes(task.id)}
+                checked={selectedTasks.includes('all')}
                 onChange={(e) => {
                   if (e.target.checked) {
-                    setSelectedTasks(prev => 
-                      prev.includes('all') ? [task.id] : [...prev, task.id]
-                    )
+                    setSelectedTasks(['all'])
                   } else {
-                    setSelectedTasks(prev => prev.filter(id => id !== task.id))
+                    setSelectedTasks([])
                   }
                 }}
               />
-              <span className="chip-task-name">{task.title}</span>
+              All Tasks
             </label>
-          ))}
+            {tasks.map(task => (
+              <label key={task.id} className="task-chip">
+                <input
+                  type="checkbox"
+                  checked={selectedTasks.includes(task.id)}
+                  onChange={(e) => {
+                    setSelectedTasks(prev => {
+                      if (e.target.checked) {
+                        // If checking a task
+                        const newSelection = prev.filter(id => id !== 'all')
+                        return [...newSelection, task.id]
+                      } else {
+                        // If unchecking a task
+                        const newSelection = prev.filter(id => id !== task.id)
+                        // If no tasks selected, leave it empty instead of defaulting to 'all'
+                        return newSelection
+                      }
+                    })
+                  }}
+                />
+                {task.title}
+              </label>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="setting">
-        <label htmlFor="stat-time-select">Time Period: </label>
-        <select
-          id="stat-time-select"
-          value={selectedPeriod}
-          onChange={(e) => setSelectedPeriod(e.target.value)}
-        >
-          {Object.entries(TIME_PERIODS).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
-      </div>
-
-      <br /><br />
+      <br />
       <h2>Overview</h2>
       <div id="stat-summary" className="remark">
         You focused for a total duration of
@@ -231,34 +241,64 @@ export function Statistics() {
         Shortest round duration: <span id="stat-summary-shortest">{formatTime(stats.shortest)}</span>
         <br />
         Longest round duration: <span id="stat-summary-longest">{formatTime(stats.longest)}</span>
+        <br /><br />
+        Most productive time: <span>{getMostProductiveTime(stats.hourlyDistribution)}</span>
+        <br />
+        Most productive day: <span>{getMostProductiveTime(stats.dailyDistribution)}</span>
+        <br />
+        Most productive month: <span>{getMostProductiveTime(stats.monthlyDistribution)}</span>
       </div>
 
-      <h2>Time Distribution:</h2>
-      <div id="pie-container">
-        <PieChart data={stats.taskDistribution} />
-        <TaskBarChart data={stats.taskDistribution} />
-      </div>
+      <h2>Task Distribution</h2>
+      <TaskBarChart data={stats.taskDistribution} />
 
-      <div id="remark-hourly" className="remark">
-        You were most productive between{' '}
-        <span className="remark-value">
-          {getMostProductiveTime(stats.hourlyDistribution)}
-        </span>
-      </div>
+      <h2>Daily Distribution</h2>
+      <TaskBarChart 
+        data={[
+          { name: 'Monday', time: stats.dailyDistribution['Monday'] || 0 },
+          { name: 'Tuesday', time: stats.dailyDistribution['Tuesday'] || 0 },
+          { name: 'Wednesday', time: stats.dailyDistribution['Wednesday'] || 0 },
+          { name: 'Thursday', time: stats.dailyDistribution['Thursday'] || 0 },
+          { name: 'Friday', time: stats.dailyDistribution['Friday'] || 0 },
+          { name: 'Saturday', time: stats.dailyDistribution['Saturday'] || 0 },
+          { name: 'Sunday', time: stats.dailyDistribution['Sunday'] || 0 }
+        ]} 
+      />
 
-      <div id="remark-daily" className="remark">
-        You were most productive on{' '}
-        <span className="remark-value">
-          {getMostProductiveTime(stats.dailyDistribution)}
-        </span>
-      </div>
+      <h2>Hourly Distribution</h2>
+      <TaskBarChart 
+        data={[
+          { name: '00:00 - 03:00', time: Object.entries(stats.hourlyDistribution)
+            .filter(([hour]) => parseInt(hour) >= 0 && parseInt(hour) < 3)
+            .reduce((sum, [_, time]) => sum + time, 0) },
+          { name: '03:00 - 06:00', time: Object.entries(stats.hourlyDistribution)
+            .filter(([hour]) => parseInt(hour) >= 3 && parseInt(hour) < 6)
+            .reduce((sum, [_, time]) => sum + time, 0) },
+          { name: '06:00 - 09:00', time: Object.entries(stats.hourlyDistribution)
+            .filter(([hour]) => parseInt(hour) >= 6 && parseInt(hour) < 9)
+            .reduce((sum, [_, time]) => sum + time, 0) },
+          { name: '09:00 - 12:00', time: Object.entries(stats.hourlyDistribution)
+            .filter(([hour]) => parseInt(hour) >= 9 && parseInt(hour) < 12)
+            .reduce((sum, [_, time]) => sum + time, 0) },
+          { name: '12:00 - 15:00', time: Object.entries(stats.hourlyDistribution)
+            .filter(([hour]) => parseInt(hour) >= 12 && parseInt(hour) < 15)
+            .reduce((sum, [_, time]) => sum + time, 0) },
+          { name: '15:00 - 18:00', time: Object.entries(stats.hourlyDistribution)
+            .filter(([hour]) => parseInt(hour) >= 15 && parseInt(hour) < 18)
+            .reduce((sum, [_, time]) => sum + time, 0) },
+          { name: '18:00 - 21:00', time: Object.entries(stats.hourlyDistribution)
+            .filter(([hour]) => parseInt(hour) >= 18 && parseInt(hour) < 21)
+            .reduce((sum, [_, time]) => sum + time, 0) },
+          { name: '21:00 - 24:00', time: Object.entries(stats.hourlyDistribution)
+            .filter(([hour]) => parseInt(hour) >= 21 && parseInt(hour) < 24)
+            .reduce((sum, [_, time]) => sum + time, 0) }
+        ]} 
+      />
 
-      <div id="remark-monthly" className="remark">
-        You were most productive in{' '}
-        <span className="remark-value">
-          {getMostProductiveTime(stats.monthlyDistribution)}
-        </span>
-      </div>
+      <h2>Monthly Distribution</h2>
+      <TaskBarChart 
+        data={Object.entries(stats.monthlyDistribution).map(([name, time]) => ({ name, time }))} 
+      />
 
       <RoundEntries />
     </PageLayout>

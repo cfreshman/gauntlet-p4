@@ -25,7 +25,7 @@
 
 .statistics-content {
   flex: 1;
-  padding: 1rem;
+  padding: 1.5rem;
   overflow-y: auto;
 }
 
@@ -80,17 +80,27 @@
   height: 100%;
   background-color: var(--coloraccent);
   transition: width 0.3s ease;
+  display: flex;
+  align-items: center;
+}
+
+.bar-value {
+  background-color: var(--bgcolor);
+  color: var(--color);
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 0 0.5rem;
+  border-radius: 10px;
+  margin: 3px;
+  height: 18px;
+  line-height: 18px;
+  display: flex;
+  align-items: center;
 }
 
 .tooltip {
-  position: absolute;
-  background-color: var(--bgcolor2);
-  padding: 0.5rem;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s;
+  display: none;
 }
 
 .task-bar-container:hover .tooltip {
@@ -98,39 +108,162 @@
 }
 
 #round-entries {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
-  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-.round-entry {
-  background-color: var(--bgcolor2);
-  padding: 1rem;
-  border-radius: 8px;
-}
-
-.round-entry-header {
+.entry-row {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
+  padding: 0.75rem;
+  background: var(--bgcolor2);
+  border-radius: 6px;
 }
 
-.round-entry-name {
+.entry-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.entry-task {
   font-weight: 500;
+  margin-bottom: 0.25rem;
 }
 
-.round-entry-duration {
+.entry-time {
+  font-size: 0.85rem;
+  opacity: 0.6;
+}
+
+.entry-notes {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.entry-side {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: 1rem;
+}
+
+.entry-duration {
+  font-size: 0.9rem;
   color: var(--coloraccent);
 }
 
-.round-entry-time {
-  font-size: 0.9rem;
-  opacity: 0.8;
+.entry-delete {
+  background: none;
+  border: none;
+  color: var(--color);
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.round-entry-notes {
-  margin-top: 0.5rem;
-  font-style: italic;
-  opacity: 0.8;
+#filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.statistics-filters {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--coloraccent);
+}
+
+.filter-group select {
+  background-color: var(--bgcolor2);
+  color: var(--color);
+  border: none;
+  padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fff'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1.25rem;
+  min-width: 150px;
+}
+
+.filter-group select:hover {
+  background-color: var(--bgcolor);
+}
+
+.task-chip {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--bgcolor2);
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  user-select: none;
+}
+
+.task-chip:hover {
+  background-color: var(--bgcolor);
+}
+
+.task-chip input[type="checkbox"] {
+  margin: 0 0.5rem 0 0;
+  accent-color: var(--coloraccent);
+}
+
+#stat-details {
+  margin: 2rem 0;
+}
+
+#stat-details summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  user-select: none;
+}
+
+#stat-details summary::-webkit-details-marker {
+  display: none;
+}
+
+#stat-details summary::before {
+  content: "arrow_right";
+  font-family: "Material Icons Round";
+  font-size: 1.5rem;
+  transition: transform 0.2s;
+}
+
+#stat-details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+#stat-details summary h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--coloraccent);
 } 

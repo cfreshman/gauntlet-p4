@@ -62,6 +62,9 @@ create table timer_states (
   running boolean not null,
   focus_num integer not null,
   selected_task text,
+  session_pattern text,           -- The current session pattern (e.g., "25-5-25-15") if a session is active
+  session_goals text,             -- Goals for the current session
+  pattern_position integer,       -- Current position in the pattern (0-based index)
   updated_at timestamp with time zone default now()
 );
 

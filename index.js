@@ -53,14 +53,212 @@ let volumeContainer = document.getElementById("slider-container");
 let volumeSlider = document.getElementById("volume-slider");
 let volumeValue = document.getElementById("volume-value");
 
-const timerInputs = {
-	focus: document.getElementById("focus-input"),
-	short: document.getElementById("short-input"),
-	long: document.getElementById("long-input"),
-	rounds: document.getElementById("rounds-input"),
-};
+// Session pattern management
+let currentSession = null;
 
-let colorsDiv = document.getElementById("colors");
+// Initialize session dialog
+const newsessionDialog = document.getElementById('newsession');
+const patternBtns = document.querySelectorAll('.pattern-btn');
+const customPatternInput = document.querySelector('.custom-pattern-input');
+const patternInput = document.getElementById('pattern-input');
+const sessionGoals = document.getElementById('session-goals');
+
+// Show dialog when new session button is clicked
+document.getElementById('newsessionbtn').addEventListener('click', () => {
+    newsessionDialog.showModal();
+});
+
+// Handle pattern button selection
+patternBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        if (btn.classList.contains('custom-pattern')) {
+            customPatternInput.style.display = 'block';
+            patternBtns.forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        } else {
+            customPatternInput.style.display = 'none';
+            patternBtns.forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            patternInput.value = btn.dataset.pattern;
+        }
+    });
+});
+
+// Handle dialog buttons
+document.getElementById('cancel-session').addEventListener('click', () => {
+    newsessionDialog.close();
+    resetSessionDialog();
+});
+
+document.getElementById('start-session').addEventListener('click', () => {
+    const pattern = patternInput.value;
+    if (!validatePattern(pattern)) {
+        alert('Invalid pattern format. Please use numbers separated by hyphens (e.g., 25-5-25-15)');
+        return;
+    }
+    
+    const goals = sessionGoals.value.trim();
+    if (!goals) {
+        alert('Please enter session goals');
+        return;
+    }
+    
+    startNewSession(pattern, goals);
+    newsessionDialog.close();
+    resetSessionDialog();
+});
+
+function validatePattern(pattern) {
+    // Pattern should be numbers separated by hyphens
+    const regex = /^\d+(-\d+)*$/;
+    if (!regex.test(pattern)) return false;
+    
+    // Should have at least one focus period
+    const numbers = pattern.split('-').map(Number);
+    return numbers.length >= 1 && numbers.every(n => n > 0 && n <= 180);
+}
+
+function startNewSession(pattern, goals) {
+    // Clean up existing session if any
+    if (currentSession) {
+        // End current session if one is in progress
+        if (roundInfo.currentSessionId) {
+            endSession(roundInfo.currentSessionId, roundInfo.t);
+            roundInfo.currentSessionId = null;
+        }
+        // Remove existing session display
+        const existingDisplay = document.querySelector('.current-session');
+        if (existingDisplay) {
+            existingDisplay.remove();
+        }
+    }
+
+    const rounds = pattern.split('-').map(Number);
+    currentSession = {
+        pattern,
+        goals,
+        rounds,
+        currentRoundIndex: 0
+    };
+    
+    // Reset timer state
+    roundInfo.t = 0;
+    roundInfo.running = false;
+    roundInfo.pattern = pattern;  // Store pattern
+    roundInfo.patternPosition = 0;  // Reset position
+    
+    // Set initial duration from first round
+    const initialDuration = rounds[0] * 60;
+    roundInfo.current = 'focus';
+    roundInfo.remaining = initialDuration;
+    config[roundInfo.current] = initialDuration;
+    
+    // Update round display
+    const totalRounds = Math.ceil(rounds.length / 2);  // Count focus periods
+    roundnoDiv.innerText = `1/${totalRounds}`;  // Start at first round
+    
+    // Update UI
+    timer.className = "t-" + roundInfo.current;
+    setTime();
+    
+    // Create session display
+    showCurrentSession();
+}
+
+function startNextRound() {
+    if (!currentSession) return;
+    
+    const { rounds, currentRoundIndex } = currentSession;
+    if (currentRoundIndex >= rounds.length) {
+        // Session complete
+        alert('Session complete!');
+        currentSession = null;
+        roundInfo.pattern = null;
+        roundInfo.patternPosition = 0;
+        const display = document.querySelector('.current-session');
+        if (display) display.remove();
+        return;
+    }
+    
+    const duration = rounds[currentRoundIndex] * 60; // Convert minutes to seconds
+    const isBreak = currentRoundIndex % 2 === 1;
+    
+    // Update timer state
+    roundInfo.current = isBreak ? 'short' : 'focus';
+    roundInfo.t = 0;
+    roundInfo.remaining = duration;
+    config[roundInfo.current] = duration; // Set the duration for this round
+    
+    // Update round display if this is a focus period
+    if (!isBreak) {
+        const totalRounds = Math.ceil(rounds.length / 2);  // Count focus periods
+        const currentRound = Math.floor(currentRoundIndex / 2) + 1;  // Calculate current focus round
+        roundnoDiv.innerText = `${currentRound}/${totalRounds}`;
+    }
+    
+    // Update UI
+    timer.className = "t-" + roundInfo.current;
+    setTime();
+    
+    // Start timer if it was running
+    if (roundInfo.running) {
+        timerWorker.postMessage({
+            type: "start",
+            maxDuration: duration,
+        });
+    }
+    
+    // Start new session if this is a focus round
+    if (!isBreak && selectedTask) {
+        getTaskByName(selectedTask).then(task => {
+            if (task) {
+                startSession(task.id, duration).then(({ data }) => {
+                    if (data) roundInfo.currentSessionId = data.id;
+                });
+            }
+        });
+    }
+    
+    // Increment round index
+    currentSession.currentRoundIndex++;
+    roundInfo.patternPosition = currentRoundIndex;
+}
+
+function showCurrentSession() {
+    // Remove existing session display if any
+    const existingDisplay = document.querySelector('.current-session');
+    if (existingDisplay) {
+        existingDisplay.remove();
+    }
+    
+    // Create new session display
+    const display = document.createElement('div');
+    display.className = 'current-session';
+    display.innerHTML = `
+        <h3>Current Session</h3>
+        <div class="session-pattern">${currentSession.pattern}</div>
+        <div class="session-goals-display">${currentSession.goals}</div>
+    `;
+    
+    document.body.appendChild(display);
+}
+
+function resetSessionDialog() {
+    patternBtns.forEach(btn => btn.classList.remove('selected'));
+    customPatternInput.style.display = 'none';
+    patternInput.value = '';
+    sessionGoals.value = '';
+}
+
+// Replace the existing nextRound function
+const originalNextRound = nextRound;
+nextRound = function() {
+    if (currentSession) {
+        startNextRound();
+    } else {
+        originalNextRound.call(this);
+    }
+};
 
 let pipActive = false;
 
@@ -84,7 +282,9 @@ let roundInfo = {
 	current: "focus",
 	running: false,
 	remaining: config.focus,  // Initialize with focus duration
-	currentSessionId: null
+	currentSessionId: null,
+	pattern: null,  // Add pattern tracking
+	patternPosition: 0  // Add position tracking
 };
 
 let isSyncing = false;
@@ -1331,26 +1531,28 @@ let lastSyncTime = 0;
 const SYNC_THROTTLE = 1000; // Minimum time between syncs in ms
 
 async function syncTimerState() {
-	const now = Date.now();
-	if (now - lastSyncTime < SYNC_THROTTLE) return;
-	
-	lastSyncTime = now;
-	lastUpdate = new Date().toISOString();
-	
-	try {
-		await updateTimerState({
-			current: roundInfo.current,
-			t: roundInfo.t,
-			duration: config[roundInfo.current],
-			running: roundInfo.running,
-			focusNum: roundInfo.focusNum,
-			selectedTask
-		});
-	} catch (error) {
-		console.error('Error syncing timer state:', error);
-		// If we're offline, don't keep trying to sync
-		if (!isOnline) return;
-	}
+    const now = Date.now();
+    if (now - lastSyncTime < SYNC_THROTTLE) return;
+    
+    lastSyncTime = now;
+    lastUpdate = new Date().toISOString();
+    
+    try {
+        await updateTimerState({
+            current: roundInfo.current,
+            t: roundInfo.t,
+            duration: config[roundInfo.current],
+            running: roundInfo.running,
+            focusNum: roundInfo.focusNum,
+            selectedTask,
+            session_pattern: currentSession?.pattern || null,
+            session_goals: currentSession?.goals || null,
+            pattern_position: currentSession?.currentRoundIndex || 0
+        });
+    } catch (error) {
+        console.error('Error syncing timer state:', error);
+        if (!isOnline) return;
+    }
 }
 
 async function loadStatistics(updateEntryCards = true) {
@@ -1871,6 +2073,7 @@ const accents = {
 
 let theme = "dark";
 let themeAccent = "lavender";
+let colorsDiv = document.getElementById("colors");
 
 function setTheme(basetheme = "dark", accent) {
 	if (!accent) accent = themes[basetheme].defaccent;
@@ -1951,84 +2154,6 @@ function saveConfig() {
 	localStorage.setItem("pomo-config", JSON.stringify(config));
 	setTime();
 }
-
-timerInputs.focus.value = config.focus / 60;
-timerInputs.short.value = config.short / 60;
-timerInputs.long.value = config.long / 60;
-timerInputs.rounds.value = config.longGap;
-
-function timerInput(name, value) {
-	if (value > 180) {
-		config[name] = 10800;
-		timerInputs[name].value = 180;
-	} else if (value < 1) {
-		config[name] = 60;
-		timerInputs[name].value = 1;
-	} else {
-		config[name] = value * 60;
-	}
-	saveConfig();
-}
-
-function incrementTimer(name) {
-	if (config[name] < 10800) {
-		config[name] += 60;
-		timerInputs[name].value = config[name] / 60;
-	}
-	saveConfig();
-}
-
-function decrementTimer(name) {
-	if (config[name] > 60) {
-		config[name] -= 60;
-		timerInputs[name].value = config[name] / 60;
-	}
-	saveConfig();
-}
-
-timerInputs.focus.addEventListener("input", function () {
-	timerInput("focus", this.value);
-});
-timerInputs.short.addEventListener("input", function () {
-	timerInput("short", this.value);
-});
-timerInputs.long.addEventListener("input", function () {
-	timerInput("long", this.value);
-});
-timerInputs.rounds.addEventListener("input", function () {
-	if (this.value > 18) {
-		config.longGap = 18;
-		this.value = 18;
-	} else if (this.value < 1) {
-		config.longGap = 1;
-		this.value = 1;
-	} else {
-		config.longGap = parseInt(this.value);
-	}
-	saveConfig();
-});
-
-document.getElementById("focus-inc").addEventListener("click", () => incrementTimer("focus"));
-document.getElementById("short-inc").addEventListener("click", () => incrementTimer("short"));
-document.getElementById("long-inc").addEventListener("click", () => incrementTimer("long"));
-
-document.getElementById("focus-dec").addEventListener("click", () => decrementTimer("focus"));
-document.getElementById("short-dec").addEventListener("click", () => decrementTimer("short"));
-document.getElementById("long-dec").addEventListener("click", () => decrementTimer("long"));
-
-document.getElementById("rounds-inc").addEventListener("click", () => {
-	config.longGap = config.longGap < 18 ? config.longGap + 1 : 18;
-	timerInputs.rounds.value = config.longGap;
-	roundnoDiv.innerText = roundInfo.focusNum + "/" + config.longGap;
-	saveConfig();
-});
-
-document.getElementById("rounds-dec").addEventListener("click", () => {
-	config.longGap = config.longGap > 1 ? config.longGap - 1 : 1;
-	timerInputs.rounds.value = config.longGap;
-	roundnoDiv.innerText = roundInfo.focusNum + "/" + config.longGap;
-	saveConfig();
-});
 
 //#endregion
 
@@ -2255,13 +2380,36 @@ supabase.auth.onAuthStateChange((event, session) => {
 				roundInfo.t = state.time;
 				roundInfo.remaining = state.remaining_time;
 				
+				// Restore session pattern if exists
+				if (state.session_pattern) {
+					currentSession = {
+						pattern: state.session_pattern,
+						goals: state.session_goals || '',
+						rounds: state.session_pattern.split('-').map(Number),
+						currentRoundIndex: state.pattern_position || 0
+					};
+					showCurrentSession();
+					
+					// Update round display for session pattern
+					const totalRounds = Math.ceil(currentSession.rounds.length / 2);
+					const currentRound = Math.floor(currentSession.currentRoundIndex / 2) + 1;
+					roundnoDiv.innerText = `${currentRound}/${totalRounds}`;
+					
+					// Set duration based on current round
+					if (currentSession.currentRoundIndex < currentSession.rounds.length) {
+						const duration = currentSession.rounds[currentSession.currentRoundIndex] * 60;
+						config[roundInfo.current] = duration;
+					}
+				} else {
+					currentSession = null;
+					roundnoDiv.innerText = roundInfo.focusNum + "/" + config.longGap;
+				}
+				
 				if (state.selected_task && tasks.includes(state.selected_task)) {
 					selectedTask = state.selected_task;
 					taskSelect.value = selectedTask;
 				}
 				
-				// Update round display
-				roundnoDiv.innerText = roundInfo.focusNum + "/" + config.longGap;
 				timer.className = "t-" + roundInfo.current;
 				setTime();
 				
@@ -2270,7 +2418,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 				pauseplaybtn.title = state.running ? "Pause Timer" : "Start Timer";
 				
 				if (state.running) {
-					const duration = config[state.current];
+					const duration = config[roundInfo.current];
 					const elapsedTime = state.time || 0;
 					timerWorker.postMessage({
 						type: "start",
@@ -2297,19 +2445,54 @@ supabase.auth.onAuthStateChange((event, session) => {
 				roundInfo.running = state.running;
 				roundInfo.focusNum = state.focus_num;
 				roundInfo.remaining = state.remaining_time;
+				
+				// Restore session pattern if exists
+				if (state.session_pattern) {
+					currentSession = {
+						pattern: state.session_pattern,
+						goals: state.session_goals || '',
+						rounds: state.session_pattern.split('-').map(Number),
+						currentRoundIndex: state.pattern_position || 0
+					};
+					showCurrentSession();
+					
+					// Update round display for session pattern
+					const totalRounds = Math.ceil(currentSession.rounds.length / 2);
+					const currentRound = Math.floor(currentSession.currentRoundIndex / 2) + 1;
+					roundnoDiv.innerText = `${currentRound}/${totalRounds}`;
+					
+					// Set duration based on current round
+					if (currentSession.currentRoundIndex < currentSession.rounds.length) {
+						const duration = currentSession.rounds[currentSession.currentRoundIndex] * 60;
+						config[roundInfo.current] = duration;
+					}
+				} else {
+					currentSession = null;
+					roundnoDiv.innerText = roundInfo.focusNum + "/" + config.longGap;
+				}
+				
 				if (state.selected_task && tasks.includes(state.selected_task)) {
 					selectedTask = state.selected_task;
 					taskSelect.value = selectedTask;
 				}
-				setTime();
-				roundnoDiv.innerText = roundInfo.focusNum + "/" + config.longGap;
+				
 				timer.className = "t-" + roundInfo.current;
+				setTime();
+				
+				// Start worker if timer was running
+				if (state.running) {
+					timerWorker.postMessage({
+						type: "start",
+						t: state.time,
+						maxDuration: config[roundInfo.current],
+					});
+				}
 			}
 		});
 	} else if (event === 'SIGNED_OUT') {
 		stopPeriodicSync();
 		if (timerStateSubscription) {
-			timerStateSubscription.unsubscribe();
+				timerStateSubscription.unsubscribe();
 		}
 		window.removeEventListener('online', setupSubscription);
 	}
@@ -2471,3 +2654,19 @@ document.getElementById("closemenu").addEventListener("click", () => {
 		viewState = "timer";
 	}
 });
+
+// Theme initialization
+
+// Initialize theme select
+let themeSelect = document.getElementById("theme-select");
+themeSelect.value = theme;
+themeSelect.addEventListener("change", (e) => {
+    theme = e.target.value;
+    addColorButtons(theme);
+    setAccent(theme, themes[theme].defaccent);
+});
+
+// Initialize accent colors
+addColorButtons(theme);
+setAccent(theme, themeAccent);
+

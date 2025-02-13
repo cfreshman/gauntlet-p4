@@ -171,6 +171,9 @@ export async function updateTimerState(state) {
       running: state.running || false,
       focus_num: state.focusNum || 1,
       selected_task: state.selectedTask || 'Default Task',
+      session_pattern: state.session_pattern || null,
+      session_goals: state.session_goals || null,
+      pattern_position: state.pattern_position || 0,
       updated_at: new Date().toISOString()
     })
     .select()

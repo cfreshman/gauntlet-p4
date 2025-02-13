@@ -25,7 +25,7 @@ export const useTaskStore = create(
           set({ 
             tasks: tasks.map(task => ({
               id: task.id,
-              title: task.name
+              name: task.name
             }))
           })
         } catch (error) {
@@ -52,7 +52,7 @@ export const useTaskStore = create(
           set(state => ({
             tasks: [...state.tasks, {
               id: task.id,
-              title: task.name
+              name: task.name
             }]
           }))
 
@@ -62,7 +62,7 @@ export const useTaskStore = create(
           // If offline or error, create local task
           const task = {
             id: nanoid(),
-            title
+            name: title
           }
           
           set(state => ({

@@ -224,7 +224,7 @@ export async function subscribeToTimerState(callback) {
 }
 
 // Session recording functions
-export async function startSession(taskId, timerDuration) {
+export async function saveCompletedSession(sessionData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
@@ -232,32 +232,18 @@ export async function startSession(taskId, timerDuration) {
     .from('daily_sessions')
     .insert({
       user_id: user.id,
-      task_id: taskId,
-      start_time: new Date().toISOString(),
+      task_id: sessionData.taskId,
+      start_time: sessionData.startTime,
       end_time: new Date().toISOString(),
-      timer_duration: timerDuration,
-      actual_duration: 0
+      timer_duration: sessionData.timerDuration,
+      actual_duration: sessionData.actualDuration,
+      notes: sessionData.notes,
+      session_pattern: sessionData.sessionPattern,
+      session_goals: sessionData.sessionGoals,
+      pattern_position: sessionData.patternPosition
     })
     .select()
     .single()
-}
-
-export async function endSession(sessionId, actualDuration, notes = null) {
-  if (actualDuration < 60) { // Less than 1 minute
-    return await supabase
-      .from('daily_sessions')
-      .delete()
-      .match({ id: sessionId })
-  }
-
-  return await supabase
-    .from('daily_sessions')
-    .update({
-      end_time: new Date().toISOString(),
-      actual_duration: actualDuration,
-      notes
-    })
-    .match({ id: sessionId })
 }
 
 export async function updateSelectedTask(taskName) {

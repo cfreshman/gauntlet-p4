@@ -179,7 +179,7 @@ export function TopNav() {
             onChange={(e) => useTaskStore.getState().selectTask(e.target.value)}
           >
             {tasks.map(task => (
-              <option key={task.id} value={task.id}>{task.title}</option>
+              <option key={task.id} value={task.id}>{task.name}</option>
             ))}
           </select>
         ) : (

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { supabase } from '../../supabase-client'
+import { supabase, saveCompletedSession } from '../../supabase-client'
 
 const initialRoundInfo = {
   t: 0,
@@ -8,7 +8,8 @@ const initialRoundInfo = {
   running: false,
   pattern: null,
   patternPosition: 0,
-  currentRoundIndex: 0
+  currentRoundIndex: 0,
+  sessionStartTime: null  // Add this to track when the focus period started
 }
 
 export const useTimerStore = create((set, get) => ({
@@ -157,7 +158,8 @@ export const useTimerStore = create((set, get) => ({
         pattern,
         current: 'focus',
         currentRoundIndex: 0,
-        t: 0
+        t: 0,
+        sessionStartTime: new Date().toISOString()  // Set start time for first focus period
       }
     })
     
@@ -165,9 +167,31 @@ export const useTimerStore = create((set, get) => ({
     return session
   },
 
-  nextRound: () => {
-    const { currentSession } = get()
+  nextRound: async () => {
+    const { currentSession, roundInfo } = get()
     if (!currentSession) return
+
+    // If completing a focus round, save the session
+    if (roundInfo.current === 'focus') {
+      const duration = currentSession.rounds[roundInfo.currentRoundIndex] * 60
+      // Only save if they completed enough of the session
+      if (roundInfo.t >= duration * 0.75 || roundInfo.t >= 900) { // 75% of duration or at least 15 minutes
+        try {
+          await saveCompletedSession({
+            taskId: null, // TODO: Get from task selection
+            startTime: roundInfo.sessionStartTime,
+            timerDuration: duration,
+            actualDuration: roundInfo.t,
+            notes: null, // TODO: Get from notes dialog if needed
+            sessionPattern: currentSession.pattern,
+            sessionGoals: currentSession.goals,
+            patternPosition: roundInfo.currentRoundIndex
+          })
+        } catch (error) {
+          console.error('Error saving completed session:', error)
+        }
+      }
+    }
 
     const nextIndex = (currentSession.currentRoundIndex + 1) % currentSession.rounds.length
     const updatedSession = {
@@ -182,7 +206,8 @@ export const useTimerStore = create((set, get) => ({
         pattern: currentSession.pattern,
         current: nextIndex % 2 === 0 ? 'focus' : 'break',
         currentRoundIndex: nextIndex,
-        focusNum: nextIndex % 2 === 0 ? Math.floor(nextIndex / 2) + 1 : Math.floor(nextIndex / 2)
+        focusNum: nextIndex % 2 === 0 ? Math.floor(nextIndex / 2) + 1 : Math.floor(nextIndex / 2),
+        sessionStartTime: nextIndex % 2 === 0 ? new Date().toISOString() : null // Set start time for new focus periods
       }
     })
     get().syncTimerState()

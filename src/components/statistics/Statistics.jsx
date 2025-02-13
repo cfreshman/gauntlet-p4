@@ -30,6 +30,7 @@ export function Statistics() {
   const [selectedPeriod, setSelectedPeriod] = useState('7')
   const [selectedTasks, setSelectedTasks] = useState(['all'])
   const [stats, setStats] = useState(DEFAULT_STATS)
+  const [sessions, setSessions] = useState([])
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
@@ -64,6 +65,7 @@ export function Statistics() {
     // If no tasks are selected, show no data
     if (!selectedTasks.length) {
       setStats(DEFAULT_STATS)
+      setSessions([])
       return
     }
 
@@ -81,10 +83,11 @@ export function Statistics() {
       .from('daily_sessions')
       .select(`
         *,
-        task:tasks(id, name)
+        tasks(name)
       `)
       .gte('start_time', startDate.toISOString())
       .lte('start_time', now.toISOString())
+      .order('start_time', { ascending: false })
 
     if (!selectedTasks.includes('all')) {
       query = query.in('task_id', selectedTasks)
@@ -99,10 +102,13 @@ export function Statistics() {
 
     if (!sessions?.length) {
       setStats(DEFAULT_STATS)
+      setSessions([])
       return
     }
 
-    // Process sessions
+    setSessions(sessions)
+
+    // Process sessions for stats
     const taskDist = {}
     const hourlyDist = {}
     const dailyDist = {}
@@ -116,7 +122,7 @@ export function Statistics() {
       if (!duration) return
 
       // Task distribution
-      const taskName = session.task?.name || 'Deleted Task'
+      const taskName = session.tasks?.name || 'No Task'
       taskDist[taskName] = (taskDist[taskName] || 0) + duration
 
       // Time distributions
@@ -300,7 +306,23 @@ export function Statistics() {
         data={Object.entries(stats.monthlyDistribution).map(([name, time]) => ({ name, time }))} 
       />
 
-      <RoundEntries />
+      <RoundEntries 
+        sessions={sessions} 
+        onDelete={async (deletedId) => {
+          // Update local state immediately to remove the deleted session
+          setSessions(prevSessions => prevSessions.filter(session => session.id !== deletedId));
+          
+          // Show sync indicator
+          window.dispatchEvent(new Event('sync-start'));
+          
+          // Fetch fresh data after a delay
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await fetchStats();
+          
+          // Hide sync indicator
+          window.dispatchEvent(new Event('sync-end'));
+        }} 
+      />
     </PageLayout>
   )
 } 

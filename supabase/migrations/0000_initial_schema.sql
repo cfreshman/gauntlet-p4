@@ -76,6 +76,9 @@ create table daily_sessions (
   timer_duration integer not null,    -- What they set the timer to
   actual_duration integer not null,   -- How long they actually worked
   notes text,                        -- Context about what they did
+  session_pattern text,              -- The pattern for this session (e.g., "25-5-25-15")
+  session_goals text,                -- Goals for this session
+  pattern_position integer,          -- Position in pattern when this focus period occurred
   created_at timestamp with time zone default now()
 );
 
@@ -88,6 +91,9 @@ create policy "Users can view own sessions"
 
 create policy "Users can insert own sessions"
   on daily_sessions for insert with check (auth.uid() = user_id);
+
+create policy "Users can delete own sessions"
+  on daily_sessions for delete using (auth.uid() = user_id);
 
 -- Enable realtime
 alter publication supabase_realtime add table public.timer_states; 

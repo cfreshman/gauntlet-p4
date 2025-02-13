@@ -48,7 +48,7 @@ export function TaskManager() {
           <div id="task-container">
             {tasks.map(task => (
               <div key={task.id} className="task">
-                <div className="task-name">{task.title}</div>
+                <div className="task-name">{task.name}</div>
                 <span 
                   className="material-icons-round"
                   onClick={() => deleteTask(task.id)}

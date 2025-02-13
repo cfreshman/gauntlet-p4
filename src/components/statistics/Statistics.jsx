@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTaskStore } from '../../store/taskStore'
 import { PageLayout } from '../common/PageLayout'
 import { TaskBarChart } from './TaskBarChart'
-import { RoundEntries } from './RoundEntries'
+import RoundEntries from './RoundEntries'
 import { supabase } from '../../../supabase-client'
 
 const TIME_PERIODS = {

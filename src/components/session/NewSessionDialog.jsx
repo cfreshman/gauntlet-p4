@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTimerStore } from '../../store/timerStore'
 
 const PRESET_PATTERNS = [
@@ -14,11 +14,36 @@ const PRESET_PATTERNS = [
   }
 ]
 
+function calculateTotalTime(pattern) {
+  if (!pattern) return 0
+  return pattern.split('-').reduce((sum, time) => sum + parseInt(time, 10), 0)
+}
+
+function formatTotalTime(minutes) {
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  if (hours > 0) {
+    return `${hours}h ${mins}m`
+  }
+  return `${mins}m`
+}
+
 export function NewSessionDialog() {
   const [selectedPattern, setSelectedPattern] = useState(PRESET_PATTERNS[0].pattern)
   const [showCustom, setShowCustom] = useState(false)
-  const [customPattern, setCustomPattern] = useState('')
+  const [customPattern, setCustomPattern] = useState(() => {
+    return localStorage.getItem('customPattern') || ''
+  })
   const [goals, setGoals] = useState('')
+
+  const currentPattern = showCustom ? customPattern : selectedPattern
+  const totalTime = calculateTotalTime(currentPattern)
+  const isValidPattern = validatePattern(currentPattern)
+
+  // Save custom pattern to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('customPattern', customPattern)
+  }, [customPattern])
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -48,7 +73,6 @@ export function NewSessionDialog() {
   function closeDialog() {
     setSelectedPattern(PRESET_PATTERNS[0].pattern)
     setShowCustom(false)
-    setCustomPattern('')
     setGoals('')
     document.getElementById('newsession').close()
   }
@@ -73,6 +97,7 @@ export function NewSessionDialog() {
                 <h4>{preset.name}</h4>
                 <div className="pattern-preview">{preset.pattern}</div>
                 <div className="pattern-desc">{preset.description}</div>
+                <div className="pattern-total">{formatTotalTime(calculateTotalTime(preset.pattern))}</div>
               </button>
             ))}
             
@@ -81,7 +106,15 @@ export function NewSessionDialog() {
               onClick={() => setShowCustom(true)}
             >
               <h4>Custom Pattern</h4>
-              <div className="pattern-desc">Create your own pattern</div>
+              {customPattern && isValidPattern ? (
+                <>
+                  <div className="pattern-preview">{customPattern}</div>
+                  <div className="pattern-desc">Custom focus-break pattern</div>
+                  <div className="pattern-total">{formatTotalTime(calculateTotalTime(customPattern))}</div>
+                </>
+              ) : (
+                <div className="pattern-desc">Create your own pattern</div>
+              )}
             </button>
           </div>
         </div>

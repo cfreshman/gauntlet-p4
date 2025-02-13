@@ -38,7 +38,6 @@
 #progress {
   stroke: var(--coloraccent);
   stroke-width: 8;
-  stroke-linecap: round;
   fill: none;
   transform: rotate(-90deg);
   transform-origin: 50% 50%;

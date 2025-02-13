@@ -132,9 +132,12 @@ export const useTimerStore = create((set, get) => ({
     
     // Clean up existing session if any
     if (currentSession) {
-      // If we're in a focus round and have completed more than 75%, save it
+      // If we're in a focus round and have completed either:
+      // - more than 75% of the round, or
+      // - at least 15 minutes of work
       const duration = currentSession.rounds[currentSession.currentRoundIndex] * 60
-      if (currentSession.currentRoundIndex % 2 === 0 && roundInfo.t >= duration * 0.75) {
+      if (currentSession.currentRoundIndex % 2 === 0 && 
+          (roundInfo.t >= duration * 0.75 || roundInfo.t >= 900)) { // 900 seconds = 15 minutes
         get().nextRound()
       }
     }

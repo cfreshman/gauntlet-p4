@@ -33,6 +33,10 @@
   text-align: left;
   cursor: pointer;
   transition: border-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
 }
 
 .pattern-btn:hover,
@@ -53,6 +57,29 @@
 .pattern-desc {
   font-size: 0.9rem;
   opacity: 0.8;
+}
+
+.pattern-total {
+  font-size: 0.9rem;
+  color: var(--coloraccent);
+  margin-top: 0.5rem;
+}
+
+.pattern-btn input {
+  width: 100%;
+  padding: 0.5rem;
+  background-color: var(--bgcolor);
+  border: none;
+  border-radius: 4px;
+  color: var(--color);
+  font-family: monospace;
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.pattern-btn input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--coloraccent);
 }
 
 #pattern-input {

@@ -1,12 +1,16 @@
 #timer {
   position: relative;
-  width: 320px;
-  height: 320px;
+  width: 70vmin;
+  height: 70vmin;
+  font-size: 1.5vmin;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 10px;
+  padding: 1em;
+}
+#timer * {
+  font-size: 1em;
 }
 
 /* PIP version */
@@ -57,27 +61,26 @@
   stroke: var(--long);
 }
 
-.timer-content {
+#timer .timer-content {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1em;
 }
 
-.time-display {
-  font-size: 4rem;
+#timer .time-display {
+  font-size: 10em;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
-.status-text {
-  font-size: 1.2rem;
+#timer .status-text {
+  font-size: 3em;
   text-transform: uppercase;
-  letter-spacing: 2px;
+  letter-spacing: 0.1em;
   opacity: 0.8;
-  margin-bottom: 1rem;
 }
 
 #s-focus, #s-short, #s-long {
@@ -90,7 +93,7 @@
   display: inline;
 }
 
-#pauseplay {
+#timer #pauseplay {
   background: none;
   border: none;
   cursor: pointer;
@@ -104,7 +107,7 @@
 }
 
 #pauseplay .material-icons-round {
-  font-size: 4rem;
+  font-size: 15em;
 }
 
 #pauseplay.playing .playing,

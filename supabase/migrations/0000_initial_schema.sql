@@ -24,20 +24,6 @@ create table tasks (
 -- Add unique constraint on user_id + name
 create unique index tasks_user_name_idx on tasks(user_id, name);
 
--- Create trigger to create Default Task for new users
-create or replace function create_default_task()
-returns trigger as $$
-begin
-  insert into tasks (user_id, name)
-  values (new.id, 'Default Task');
-  return new;
-end;
-$$ language plpgsql;
-
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute procedure create_default_task();
-
 alter table tasks enable row level security;
 
 create policy "Users can view own tasks"

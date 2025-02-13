@@ -1,6 +1,3 @@
 export const config = {
-  focus: 1500,
-  short: 300,
-  long: 900,
-  longGap: 4,
+  // No longer needed - durations come from patterns
 }; 

@@ -1,0 +1,120 @@
+#newsession {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: var(--bgcolor);
+  padding: 2rem;
+  border-radius: 12px;
+  border: none;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+#newsession::backdrop {
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.pattern-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.pattern-btn {
+  background-color: var(--bgcolor2);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.pattern-btn:hover,
+.pattern-btn.selected {
+  border-color: var(--coloraccent);
+}
+
+.pattern-btn h4 {
+  margin-bottom: 0.5rem;
+  color: var(--coloraccent);
+}
+
+.pattern-preview {
+  font-family: monospace;
+  margin-bottom: 0.5rem;
+}
+
+.pattern-desc {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+#pattern-input {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: var(--bgcolor2);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: var(--color);
+  font-family: monospace;
+  margin: 0.5rem 0;
+}
+
+#pattern-input:focus {
+  border-color: var(--coloraccent);
+  outline: none;
+}
+
+#session-goals {
+  width: 100%;
+  min-height: 100px;
+  padding: 0.75rem;
+  background-color: var(--bgcolor2);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: var(--color);
+  resize: vertical;
+  margin: 0.5rem 0;
+}
+
+#session-goals:focus {
+  border-color: var(--coloraccent);
+  outline: none;
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.dialog-buttons button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.dialog-buttons button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.dialog-buttons .secondary {
+  background-color: var(--bgcolor2);
+  color: var(--color);
+}
+
+.dialog-buttons .primary {
+  background-color: var(--coloraccent);
+  color: var(--bgcolor);
+} 

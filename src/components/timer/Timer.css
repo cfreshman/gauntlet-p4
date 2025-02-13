@@ -1,0 +1,119 @@
+#timer {
+  position: relative;
+  width: 320px;
+  height: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+}
+
+/* PIP version */
+.pip-window {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pip-window #timer {
+  width: 280px;
+  height: 280px;
+  padding: 0;
+}
+
+#ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+#secondary {
+  stroke: var(--bgcolor2);
+  stroke-width: 8;
+  fill: none;
+}
+
+#progress {
+  stroke: var(--coloraccent);
+  stroke-width: 8;
+  stroke-linecap: round;
+  fill: none;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0;
+}
+
+.t-focus #progress {
+  stroke: var(--focus);
+}
+
+.t-short #progress {
+  stroke: var(--short);
+}
+
+.t-long #progress {
+  stroke: var(--long);
+}
+
+.timer-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.time-display {
+  font-size: 4rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.status-text {
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  opacity: 0.8;
+  margin-bottom: 1rem;
+}
+
+#s-focus, #s-short, #s-long {
+  display: none;
+}
+
+.t-focus #s-focus,
+.t-short #s-short,
+.t-long #s-long {
+  display: inline;
+}
+
+#pauseplay {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color);
+  padding: 0;
+  opacity: 0.8;
+}
+
+#pauseplay:hover {
+  opacity: 1;
+}
+
+#pauseplay .material-icons-round {
+  font-size: 4rem;
+}
+
+#pauseplay.playing .playing,
+#pauseplay.paused .paused {
+  display: inline-block;
+}
+
+#pauseplay.playing .paused,
+#pauseplay.paused .playing {
+  display: none;
+} 

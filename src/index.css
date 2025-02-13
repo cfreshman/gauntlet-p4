@@ -1,0 +1,176 @@
+@import url('./components/layout/TopNav.css');
+@import url('./components/timer/Timer.css');
+@import url('./components/timer/Controls.css');
+@import url('./components/common/PageLayout.css');
+@import url('./components/menu/Menu.css');
+@import url('./components/tasks/TaskManager.css');
+@import url('./components/statistics/Statistics.css');
+@import url('./components/session/NewSessionDialog.css');
+@import url('./components/session/CurrentSession.css');
+@import url('./components/common/SyncIndicator.css');
+@import url('./components/common/FirstLoad.css');
+@import url('../auth-ui.css');
+
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+	font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+:root {
+	--bgcolor: #111111;
+	--bgcolor2: #1c1c1c;
+	--color: #ffffff;
+	--coloraccent: #4d79ff;
+	--focus: #ff6b6b;
+	--short: #4ecdc4;
+	--long: #45b7d1;
+	
+	/* Theme accent colors */
+	--coloraccent-red: #ff6b6b;
+	--coloraccent-violet: #ee82ee;
+	--coloraccent-blue: #4169e4;
+	--coloraccent-lavender: #8b51ff;
+	--coloraccent-teal: #008080;
+	--coloraccent-green: #39743d;
+	--coloraccent-grey: #555555;
+	
+	color-scheme: dark;
+	font-size: 16px;
+}
+
+@media (max-width: 768px) {
+	:root {
+		font-size: 14px;
+	}
+}
+
+body {
+	width: 100vw;
+	height: 100vh;
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: var(--bgcolor);
+	color: var(--color);
+}
+
+#root {
+	width: 100%;
+	height: 100%;
+}
+
+#main {
+	display: flex;
+	width: 100%;
+	height: 100%;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	background-color: var(--bgcolor);
+}
+
+/* Common styles */
+.scrollbar {
+	scrollbar-width: thin;
+	scrollbar-color: var(--coloraccent) var(--bgcolor2);
+}
+
+.scrollbar::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+.scrollbar::-webkit-scrollbar-track {
+	background: var(--bgcolor2);
+}
+
+.scrollbar::-webkit-scrollbar-thumb {
+	background-color: var(--coloraccent);
+	border-radius: 4px;
+}
+
+/* Section styles */
+.section {
+	background-color: var(--bgcolor2);
+	border-radius: 12px;
+	padding: 1.5rem;
+	margin-bottom: 1.5rem;
+}
+
+.section h2 {
+	color: var(--coloraccent);
+	font-size: 1.25rem;
+	margin-bottom: 1rem;
+}
+
+.section h3 {
+	font-size: 1rem;
+	margin: 1rem 0 0.5rem;
+	opacity: 0.9;
+}
+
+.setting {
+	margin: 1rem 0;
+}
+
+.setting label {
+	display: block;
+	margin-bottom: 0.5rem;
+	opacity: 0.8;
+}
+
+/* Form controls */
+select, input, textarea {
+	width: 100%;
+	padding: 0.75rem;
+	background-color: var(--bgcolor);
+	border: 2px solid transparent;
+	border-radius: 8px;
+	color: var(--color);
+	font-size: 1rem;
+	transition: border-color 0.2s;
+}
+
+select:hover, input:hover, textarea:hover {
+	border-color: var(--coloraccent);
+}
+
+select:focus, input:focus, textarea:focus {
+	outline: none;
+	border-color: var(--coloraccent);
+}
+
+/* Hide elements when not authenticated */
+body:not(.authenticated) #main,
+body:not(.authenticated) .top-nav,
+body:not(.authenticated) #menu,
+body:not(.authenticated) #statistics,
+body:not(.authenticated) #managetasks {
+	display: none !important;
+}
+
+/* Show auth UI when not authenticated */
+body:not(.authenticated) .auth-container {
+	display: block;
+}
+
+/* Action buttons */
+.action-button {
+	width: 100%;
+	padding: 1rem;
+	background-color: var(--coloraccent);
+	border: none;
+	border-radius: 8px;
+	color: var(--bgcolor);
+	font-size: 1rem;
+	font-weight: 500;
+	cursor: pointer;
+	transition: opacity 0.2s;
+}
+
+.action-button:hover {
+	opacity: 0.9;
+} 

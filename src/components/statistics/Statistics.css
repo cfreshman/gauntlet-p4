@@ -1,0 +1,136 @@
+#statistics {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bgcolor);
+  z-index: 1000;
+  display: none;
+  flex-direction: column;
+}
+
+.statistics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+}
+
+.statistics-title {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--coloraccent);
+}
+
+.statistics-content {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.remark {
+  margin: 1rem 0;
+  line-height: 1.5;
+  opacity: 0.8;
+}
+
+.remark span {
+  color: var(--coloraccent);
+  margin: 0 0.25rem;
+}
+
+#pie-container {
+  display: flex;
+  gap: 2rem;
+  margin: 2rem 0;
+  flex-wrap: wrap;
+}
+
+.stat-chart {
+  flex: 1;
+  min-width: 300px;
+}
+
+.task-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.legend {
+  width: 120px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.8;
+}
+
+.bar-container {
+  flex: 1;
+  height: 24px;
+  background-color: var(--bgcolor2);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  background-color: var(--coloraccent);
+  transition: width 0.3s ease;
+}
+
+.tooltip {
+  position: absolute;
+  background-color: var(--bgcolor2);
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.task-bar-container:hover .tooltip {
+  opacity: 1;
+}
+
+#round-entries {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.round-entry {
+  background-color: var(--bgcolor2);
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.round-entry-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.round-entry-name {
+  font-weight: 500;
+}
+
+.round-entry-duration {
+  color: var(--coloraccent);
+}
+
+.round-entry-time {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.round-entry-notes {
+  margin-top: 0.5rem;
+  font-style: italic;
+  opacity: 0.8;
+} 

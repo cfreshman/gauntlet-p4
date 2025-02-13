@@ -2,13 +2,20 @@ import { signInWithEmail, signUpWithEmail, signOut, supabase, getCurrentSession 
 import './auth-ui.css'
 
 export function createAuthUI() {
-  const backdrop = document.createElement('div')
-  backdrop.className = 'auth-modal-backdrop'
-  document.body.appendChild(backdrop)
+  // Create auth container
+  const container = document.createElement('div')
+  container.className = 'auth-container'
+  container.style.display = 'flex'
   
-  const modal = document.createElement('div')
-  modal.className = 'auth-modal'
-  modal.innerHTML = `
+  // Create auth box
+  const box = document.createElement('div')
+  box.className = 'auth-box'
+  
+  box.innerHTML = `
+    <h1 class="auth-title">Welcome to Gomodoro</h1>
+    <p class="auth-description">
+      Sign in to track your focus sessions and sync across devices.
+    </p>
     <form class="auth-form">
       <input type="email" id="email" placeholder="Email" required>
       <input type="password" id="password" placeholder="Password" required>
@@ -16,41 +23,42 @@ export function createAuthUI() {
       <button type="button" id="signup">Sign Up</button>
     </form>
   `
-  document.body.appendChild(modal)
+  
+  container.appendChild(box)
+  document.body.appendChild(container)
 
-  function setLoading(isLoading) {
-    const buttons = modal.querySelectorAll('button')
-    buttons.forEach(button => {
-      button.disabled = isLoading
-      button.style.opacity = isLoading ? '0.7' : '1'
-    })
-  }
-
-  function showModal() {
-    modal.classList.add('active')
-    backdrop.classList.add('active')
-    modal.querySelector('#email').focus()
-  }
-
-  async function hideModal() {
-    // Don't allow hiding the modal if not authenticated
-    const { session } = await getCurrentSession()
-    if (!session) {
-      return
-    }
-    modal.classList.remove('active')
-    backdrop.classList.remove('active')
-    modal.querySelector('form').reset()
-  }
-
-  // Add sign out button to settings menu
-  function addSignOutToMenu() {
-    // Check if account section already exists
-    if (document.querySelector('#menu .section.account')) {
-      return
-    }
+  // Handle sign in
+  box.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const email = box.querySelector('#email').value
+    const password = box.querySelector('#password').value
     
-    const menu = document.querySelector('#menu .content')
+    try {
+      const { error } = await signInWithEmail(email, password)
+      if (error) throw error
+      container.style.display = 'none'
+    } catch (error) {
+      alert(error.message)
+    }
+  })
+
+  // Handle sign up
+  box.querySelector('#signup').addEventListener('click', async () => {
+    const email = box.querySelector('#email').value
+    const password = box.querySelector('#password').value
+    
+    try {
+      const { error } = await signUpWithEmail(email, password)
+      if (error) throw error
+      alert('Check your email for the confirmation link')
+    } catch (error) {
+      alert(error.message)
+    }
+  })
+
+  // Add sign out button to menu
+  const menu = document.querySelector('#menu .content')
+  if (menu) {
     const section = document.createElement('section')
     section.className = 'section account'
     section.innerHTML = `
@@ -59,80 +67,16 @@ export function createAuthUI() {
     `
     menu.appendChild(section)
 
-    document.getElementById('signout').addEventListener('click', signOut)
+    document.getElementById('signout')?.addEventListener('click', async () => {
+      await signOut()
+      container.style.display = 'flex'
+    })
   }
 
-  // Initial state
-  async function initAuthState() {
-    const { session } = await getCurrentSession()
-    if (!session) {
-      showModal()
-      // Hide main app until signed in
-      document.getElementById('main').style.display = 'none'
-    } else {
-      addSignOutToMenu()
-    }
-  }
-  initAuthState()
-
-  // Auth state change listener
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_OUT') {
-      hideModal()
-      window.location.reload() // Refresh to show login screen
-    } else if (event === 'SIGNED_IN') {
-      hideModal()
-      document.getElementById('main').style.display = 'flex'
-      addSignOutToMenu()
-    }
+  // Check initial auth state
+  getCurrentSession().then(({ session }) => {
+    container.style.display = session ? 'none' : 'flex'
   })
 
-  // Handle sign in
-  modal.querySelector('form').addEventListener('submit', async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    
-    const email = modal.querySelector('#email').value
-    const password = modal.querySelector('#password').value
-    
-    try {
-      const { error } = await signInWithEmail(email, password)
-      if (error) throw error
-      hideModal()
-    } catch (error) {
-      alert(error.message)
-    } finally {
-      setLoading(false)
-    }
-  })
-
-  // Handle sign up
-  modal.querySelector('#signup').addEventListener('click', async () => {
-    setLoading(true)
-    
-    const email = modal.querySelector('#email').value
-    const password = modal.querySelector('#password').value
-    
-    try {
-      const { error } = await signUpWithEmail(email, password)
-      if (error) throw error
-      alert('Check your email for the confirmation link')
-      hideModal()
-    } catch (error) {
-      alert(error.message)
-    } finally {
-      setLoading(false)
-    }
-  })
-
-  // Close modal when clicking backdrop
-  backdrop.addEventListener('click', async (e) => {
-    const { session } = await getCurrentSession()
-    // Only allow closing if authenticated
-    if (session) {
-      hideModal()
-    }
-  })
-
-  return modal
+  return container
 } 

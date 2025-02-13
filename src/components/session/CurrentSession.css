@@ -1,0 +1,31 @@
+.current-session {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  background-color: var(--bgcolor2);
+  padding: 1rem;
+  border-radius: 8px;
+  max-width: 300px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+}
+
+.current-session h3 {
+  color: var(--coloraccent);
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.session-pattern {
+  font-family: monospace;
+  margin-bottom: 0.5rem;
+  opacity: 0.8;
+}
+
+.session-goals-display {
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  max-height: 100px;
+  overflow-y: auto;
+  opacity: 0.8;
+} 

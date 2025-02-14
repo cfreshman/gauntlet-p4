@@ -1,4 +1,5 @@
 RULES
 - do not delete or modify unrelated code
 - use rem or em for basically all measurements
+- do not use hover effects outside of extreme edge cases
 - suggest things to add to these rules when useful

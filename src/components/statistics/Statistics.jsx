@@ -3,6 +3,7 @@ import { useTaskStore } from '../../store/taskStore'
 import { PageLayout } from '../common/PageLayout'
 import { TaskBarChart } from './TaskBarChart'
 import { SessionList } from './SessionList'
+import { HeatmapCalendar } from './HeatmapCalendar'
 import { getSessions } from '../../supabase-client'
 
 const TIME_PERIODS = {
@@ -22,6 +23,7 @@ const DEFAULT_STATS = {
   taskDistribution: [],
   hourlyDistribution: {},
   dailyDistribution: {},
+  weeklyHeatmap: {},
   monthlyDistribution: {}
 }
 
@@ -89,6 +91,7 @@ export function Statistics() {
     const hourlyDist = {}
     const dailyDist = {}
     const monthlyDist = {}
+    const weeklyHeatmap = {}
     let total = 0
     let roundCount = 0
     let shortest = Infinity
@@ -117,6 +120,11 @@ export function Statistics() {
         const dayKey = date.toLocaleDateString('en-US', { weekday: 'long' })
         const monthKey = date.toLocaleDateString('en-US', { month: 'long' })
 
+        // Weekly heatmap data
+        const dayIndex = date.getDay() // 0-6 for Sunday-Saturday
+        weeklyHeatmap[dayIndex] = weeklyHeatmap[dayIndex] || {}
+        weeklyHeatmap[dayIndex][hour] = (weeklyHeatmap[dayIndex][hour] || 0) + Math.floor(duration / 60) // Convert seconds to minutes
+
         hourlyDist[hourKey] = (hourlyDist[hourKey] || 0) + duration
         dailyDist[dayKey] = (dailyDist[dayKey] || 0) + duration
         monthlyDist[monthKey] = (monthlyDist[monthKey] || 0) + duration
@@ -137,6 +145,7 @@ export function Statistics() {
       taskDistribution: Object.entries(taskDist).map(([name, time]) => ({ name, time })),
       hourlyDistribution: hourlyDist,
       dailyDistribution: dailyDist,
+      weeklyHeatmap,
       monthlyDistribution: monthlyDist
     })
   }
@@ -303,6 +312,9 @@ export function Statistics() {
             .reduce((sum, [_, time]) => sum + time, 0) }
         ]} 
       />
+
+      <h2>Weekly Focus Heatmap</h2>
+      <HeatmapCalendar data={stats.weeklyHeatmap} />
 
       <h2>Monthly Distribution</h2>
       <TaskBarChart 

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useTaskStore } from '../../store/taskStore'
-import { IconButton } from '../common/IconButton'
 import { PageLayout } from '../common/PageLayout'
 
 export function TaskManager() {
@@ -33,6 +32,42 @@ export function TaskManager() {
     setNewTaskName('')
   }
 
+  // If there are no tasks, show the forced task creation UI
+  if (tasks.length === 0) {
+    return (
+      <div id="managetasks" style={{ display: 'flex' }}>
+        <div className="tasks-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '2rem' }}>
+          <h1 style={{ color: 'var(--coloraccent)', marginBottom: '1rem' }}>Welcome to Gomodoro</h1>
+          <div style={{ marginBottom: '2rem', maxWidth: '500px', lineHeight: '1.6' }}>
+            Before you can start using the timer, you need to create at least one task to track.
+            Tasks help you categorize and analyze how you spend your focus time.
+          </div>
+          
+          <form id="newtask" className="task" onSubmit={handleSubmit} style={{ maxWidth: '400px', width: '100%' }}>
+            <input
+              type="text"
+              maxLength="25"
+              placeholder="Enter your first task (e.g., Coding, Writing, Study)"
+              className="task-input"
+              value={newTaskName}
+              onChange={(e) => setNewTaskName(e.target.value)}
+              style={{ padding: '1rem' }}
+              autoFocus
+            />
+            <span 
+              className="material-icons-round"
+              onClick={handleSubmit}
+              style={{ cursor: 'pointer' }}
+            >
+              add
+            </span>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
+  // Normal task management UI when tasks exist
   return (
     <PageLayout
       id="managetasks"
@@ -40,33 +75,23 @@ export function TaskManager() {
       onClose={() => setIsOpen(false)}
       isOpen={isOpen}
     >
-      {tasks.length > 0 ? (
-        <>
-          <div className="task-count">
-            {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+      <div className="task-count">
+        {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+      </div>
+      <div id="task-container">
+        {tasks.map(task => (
+          <div key={task.id} className="task">
+            <div className="task-name">{task.name}</div>
+            <span 
+              className="material-icons-round"
+              onClick={() => deleteTask(task.id)}
+              style={{ cursor: 'pointer' }}
+            >
+              delete
+            </span>
           </div>
-          <div id="task-container">
-            {tasks.map(task => (
-              <div key={task.id} className="task">
-                <div className="task-name">{task.name}</div>
-                <span 
-                  className="material-icons-round"
-                  onClick={() => deleteTask(task.id)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  delete
-                </span>
-              </div>
-            ))}
-          </div>
-        </>
-      ) : (
-        <div className="empty-state">
-          <span className="material-icons-round">task</span>
-          <div>No tasks yet</div>
-          <div>Create a task to get started</div>
-        </div>
-      )}
+        ))}
+      </div>
 
       <form id="newtask" className="task" onSubmit={handleSubmit}>
         <input

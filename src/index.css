@@ -92,6 +92,47 @@ body {
 	border-radius: 4px;
 }
 
+/* Loading state */
+.loading {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: var(--bgcolor);
+	z-index: 2000;
+}
+
+.loading svg {
+	width: 120px;
+	height: 120px;
+}
+
+.loading-ring {
+	stroke: var(--coloraccent);
+	transform-origin: 50% 50%;
+	transform: rotate(-90deg);
+	animation: loading-animation 2s ease infinite;
+}
+
+@keyframes loading-animation {
+	0% {
+		stroke-dasharray: 1, 400;
+		stroke-dashoffset: 0;
+	}
+	50% {
+		stroke-dasharray: 200, 400;
+		stroke-dashoffset: -50;
+	}
+	100% {
+		stroke-dasharray: 1, 400;
+		stroke-dashoffset: -340;
+	}
+}
+
 /* Section styles */
 .section {
 	background-color: var(--bgcolor2);

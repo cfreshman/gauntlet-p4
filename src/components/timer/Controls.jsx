@@ -4,8 +4,11 @@ import { useAudioStore } from '../../store/audioStore'
 import { IconButton } from '../common/IconButton'
 
 export function Controls() {
-  const { roundInfo } = useTimerStore()
-  const { focusNum } = roundInfo
+  const { timerState, currentSession } = useTimerStore()
+  const { pattern_position } = timerState
+  // Calculate focus round number (every even position is a focus round)
+  const focusNum = Math.floor((pattern_position + 2) / 2)
+  
   const { volume, setVolume, audioType } = useAudioStore()
   const [showVolume, setShowVolume] = useState(false)
 
@@ -16,7 +19,7 @@ export function Controls() {
         title="Reset Current Timer"
         icon="replay"
         className="control-button"
-        onClick={() => useTimerStore.getState().resetRoundInfo()}
+        onClick={() => useTimerStore.getState().setElapsedTime(0)}
       />
 
       <div id="roundno" title="Number of Focus Rounds" className="round-number">

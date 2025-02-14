@@ -3,7 +3,7 @@ import { useThemeStore } from '../../store/themeStore'
 import { useNotificationStore } from '../../store/notificationStore'
 import { useAudioStore } from '../../store/audioStore'
 import { PageLayout } from '../common/PageLayout'
-import { signOut } from '../../../supabase-client'
+import { signOut } from '../../supabase-client'
 
 let openMenu = null
 

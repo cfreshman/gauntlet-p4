@@ -1,13 +1,14 @@
 .current-session {
   position: fixed;
-  top: 80px;
-  right: 20px;
+  top: 4rem;
+  left: 50%;
+  transform: translateX(-50%);
   background-color: var(--bgcolor2);
-  padding: 1rem;
+  padding: .5rem 1rem;
   border-radius: 8px;
-  max-width: 300px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   z-index: 100;
+  text-align: center;
 }
 
 .current-session h3 {
@@ -19,7 +20,35 @@
 .session-pattern {
   font-family: monospace;
   margin-bottom: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.round-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.round {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 2px solid var(--coloraccent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0.8;
+  font-size: 0.9rem;
+  color: var(--coloraccent);
+}
+
+.round.current {
+  background-color: var(--coloraccent);
+  color: var(--bgcolor);
+  opacity: 1;
 }
 
 .session-goals-display {
@@ -27,5 +56,17 @@
   white-space: pre-wrap;
   max-height: 100px;
   overflow-y: auto;
-  opacity: 0.8;
+  opacity: 1;
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 0.75rem;
+  background-color: var(--bgcolor);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: var(--color);
+  transition: border-color 0.2s;
+}
+
+.session-goals-display:hover {
+  border-color: var(--coloraccent);
 } 

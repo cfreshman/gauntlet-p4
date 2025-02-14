@@ -2,37 +2,57 @@ import { useEffect, useRef, useState } from 'react'
 import { useTimerStore } from '../../store/timerStore'
 import { useAudioStore } from '../../store/audioStore'
 import { useTaskStore } from '../../store/taskStore'
-import { saveCompletedSession } from '../../../supabase-client'
+import { supabase } from '../../supabase-client'
 
 export function Timer({ isPip }) {
-  const { roundInfo, currentSession } = useTimerStore()
-  const { t, running, currentRoundIndex, sessionStartTime } = roundInfo
+  const { timerState, currentSession } = useTimerStore()
+  const { elapsed_time, is_running, pattern_position } = timerState
   const { audioType, fadeIn, fadeOut } = useAudioStore()
-  const { selectedTask } = useTaskStore()
+  const { getSelectedTask } = useTaskStore()
   const progressRef = useRef(null)
   const [showNotesDialog, setShowNotesDialog] = useState(false)
   const [sessionNotes, setSessionNotes] = useState('')
+  const [currentRoundId, setCurrentRoundId] = useState(null)
+  const notesDialogRef = useRef(null)
   
-  const duration = currentSession?.rounds[currentRoundIndex] * 60 || 1500
-  const isBreak = currentRoundIndex % 2 === 1
-  const isLongBreak = isBreak && currentSession?.rounds[currentRoundIndex] >= 15
+  // Get current round duration from pattern
+  const rounds = currentSession?.pattern.split('-').map(Number) || [25]
+  const duration = (rounds[pattern_position] || 25) * 60
+  const isBreak = pattern_position % 2 === 1
+  const isLongBreak = isBreak && rounds[pattern_position] >= 15
 
   const timerClass = isBreak ? 
     (isLongBreak ? 'long' : 'short') : 
     'focus'
 
+  // Effect to handle dialog visibility
+  useEffect(() => {
+    if (showNotesDialog) {
+      notesDialogRef.current?.showModal()
+    } else {
+      notesDialogRef.current?.close()
+    }
+  }, [showNotesDialog])
+
   useEffect(() => {
     let interval
-    if (!isPip && running && t < duration) {
+    if (!isPip && is_running && elapsed_time < duration) {
       interval = setInterval(() => {
-        useTimerStore.getState().setTime(t => {
+        useTimerStore.getState().setElapsedTime(t => {
           if (t >= duration) {
             clearInterval(interval)
-            useTimerStore.getState().setRunning(false)
+            useTimerStore.getState().setIsRunning(false)
             
             // If completing a focus round, show notes dialog
             if (!isBreak && (t >= duration * 0.75 || t >= 900)) {
-              setShowNotesDialog(true)
+              useTimerStore.getState().nextRound().then(roundId => {
+                if (roundId) {
+                  setCurrentRoundId(roundId)
+                  setShowNotesDialog(true)
+                } else {
+                  useTimerStore.getState().nextRound()
+                }
+              })
             } else {
               useTimerStore.getState().nextRound()
             }
@@ -43,48 +63,42 @@ export function Timer({ isPip }) {
       }, 1000)
     }
     return () => clearInterval(interval)
-  }, [running, duration, isPip, isBreak])
+  }, [is_running, duration, isPip, isBreak])
 
   // Handle notes submission
   const handleNotesSubmit = async (save) => {
-    if (save && currentSession) {
+    if (save && currentRoundId && sessionNotes) {
       try {
-        await saveCompletedSession({
-          taskId: selectedTask?.id,
-          startTime: new Date(sessionStartTime).toISOString(),
-          timerDuration: duration,
-          actualDuration: t,
-          notes: sessionNotes,
-          sessionPattern: currentSession.pattern,
-          sessionGoals: currentSession.goals,
-          patternPosition: currentRoundIndex
-        })
+        await supabase
+          .from('rounds')
+          .update({ notes: sessionNotes })
+          .eq('id', currentRoundId)
       } catch (error) {
-        console.error('Error saving completed session:', error)
+        console.error('Error updating round notes:', error)
       }
     }
     setSessionNotes('')
     setShowNotesDialog(false)
-    useTimerStore.getState().nextRound()
+    setCurrentRoundId(null)
   }
 
   // Control noise based on timer state
   useEffect(() => {
     if (!isPip && audioType === 'noise') {
-      if (running && !isBreak) {
+      if (is_running && !isBreak) {
         fadeIn()
       } else {
         fadeOut()
       }
     }
-  }, [running, isBreak, audioType, isPip])
+  }, [is_running, isBreak, audioType, isPip])
 
   useEffect(() => {
     if (progressRef.current) {
-      const progress = (t / duration) * 100
+      const progress = (elapsed_time / duration) * 100
       progressRef.current.style.strokeDashoffset = progress
     }
-  }, [t, duration])
+  }, [elapsed_time, duration])
 
   function formatTime(seconds) {
     const minutes = Math.floor((duration - seconds) / 60)
@@ -109,7 +123,7 @@ export function Timer({ isPip }) {
 
         <div className="timer-content">
           <div id="time" className="time-display">
-            {formatTime(t)}
+            {formatTime(elapsed_time)}
           </div>
 
           <div id="status" className="status-text">
@@ -118,9 +132,9 @@ export function Timer({ isPip }) {
 
           <button 
             id="pauseplay" 
-            className={running ? 'playing' : 'paused'} 
-            title={running ? 'Pause Timer' : 'Start Timer'}
-            onClick={() => useTimerStore.getState().setRunning(!running)}
+            className={is_running ? 'playing' : 'paused'} 
+            title={is_running ? 'Pause Timer' : 'Start Timer'}
+            onClick={() => useTimerStore.getState().setIsRunning(!is_running)}
           >
             <span className="material-icons-round playing">pause_circle</span>
             <span className="material-icons-round paused">play_circle</span>
@@ -128,31 +142,32 @@ export function Timer({ isPip }) {
         </div>
       </div>
 
-      {showNotesDialog && (
-        <dialog open className="notes-dialog">
-          <form method="dialog" onSubmit={(e) => {
-            e.preventDefault()
-            handleNotesSubmit(true)
-          }}>
-            <h2>Session Complete</h2>
-            <p>What did you accomplish?</p>
-            <textarea
-              value={sessionNotes}
-              onChange={(e) => setSessionNotes(e.target.value)}
-              placeholder="e.g., Finished first draft of proposal, researched key points..."
-              rows="4"
-            />
-            <div className="dialog-buttons">
-              <button type="button" onClick={() => handleNotesSubmit(false)}>
-                Skip
-              </button>
-              <button type="submit" className="primary">
-                Save Notes
-              </button>
-            </div>
-          </form>
-        </dialog>
-      )}
+      <dialog ref={notesDialogRef} id="notes-dialog">
+        <form method="dialog" onSubmit={(e) => {
+          e.preventDefault()
+          handleNotesSubmit(true)
+        }}>
+          <h2>Focus Round Complete</h2>
+          <p className="dialog-desc">Take a moment to reflect on what you accomplished during this focus round.</p>
+          
+          <textarea
+            id="round-notes"
+            value={sessionNotes}
+            onChange={(e) => setSessionNotes(e.target.value)}
+            placeholder="e.g., Finished first draft of proposal, researched key points..."
+            rows="4"
+          />
+          
+          <div className="dialog-buttons">
+            <button type="button" className="secondary" onClick={() => handleNotesSubmit(false)}>
+              Skip
+            </button>
+            <button type="submit" className="primary">
+              Save Notes
+            </button>
+          </div>
+        </form>
+      </dialog>
     </>
   )
 } 

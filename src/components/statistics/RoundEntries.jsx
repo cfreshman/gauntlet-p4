@@ -1,23 +1,20 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../../../supabase-client';
+import { deleteRound } from '../../supabase-client';
 
-export default function RoundEntries({ sessions, onDelete }) {
-  const [localSessions, setLocalSessions] = useState(sessions);
+export default function RoundEntries({ rounds, onDelete }) {
+  const [localRounds, setLocalRounds] = useState(rounds);
 
   useEffect(() => {
-    setLocalSessions(sessions);
-  }, [sessions]);
+    setLocalRounds(rounds);
+  }, [rounds]);
 
   const handleDelete = async (id) => {
     try {
-      const { error } = await supabase
-        .from('daily_sessions')
-        .delete()
-        .eq('id', id);
+      const { error } = await deleteRound(id);
 
       if (error) {
-        console.error('Error deleting entry:', error);
-        alert('Failed to delete session: ' + error.message);
+        console.error('Error deleting round:', error);
+        alert('Failed to delete round: ' + error.message);
         return;
       }
 
@@ -26,12 +23,15 @@ export default function RoundEntries({ sessions, onDelete }) {
         onDelete(id);
       }
     } catch (error) {
-      console.error('Error deleting entry:', error);
-      alert('Failed to delete session. Please try again.');
+      console.error('Error deleting round:', error);
+      alert('Failed to delete round. Please try again.');
     }
   };
 
-  const formatTime = (minutes) => `${minutes}m`;
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes}m`;
+  };
 
   return (
     <details id="stat-details" open>
@@ -39,19 +39,19 @@ export default function RoundEntries({ sessions, onDelete }) {
         <h2>Session History</h2>
       </summary>
       <div id="round-entries">
-        {localSessions?.length > 0 ? (
-          localSessions.map(entry => (
-            <div key={entry.id} className="entry-row">
+        {localRounds?.length > 0 ? (
+          localRounds.map(round => (
+            <div key={round.id} className="entry-row">
               <div className="entry-main">
-                <div className="entry-task">{entry.tasks?.name || 'No Task'}</div>
-                {entry.notes && <div className="entry-notes">{entry.notes}</div>}
-                <div className="entry-time">{new Date(entry.start_time).toLocaleString()}</div>
+                <div className="entry-task">{round.task?.name || 'No Task'}</div>
+                {round.notes && <div className="entry-notes">{round.notes}</div>}
+                <div className="entry-time">{new Date(round.started_at).toLocaleString()}</div>
               </div>
               <div className="entry-side">
-                <div className="entry-duration">{formatTime(Math.round(entry.actual_duration / 60))}</div>
+                <div className="entry-duration">{formatTime(round.duration)}</div>
                 <button 
                   className="entry-delete"
-                  onClick={() => handleDelete(entry.id)}
+                  onClick={() => handleDelete(round.id)}
                 >
                   <span className="material-icons-round">delete</span>
                 </button>
@@ -59,7 +59,7 @@ export default function RoundEntries({ sessions, onDelete }) {
             </div>
           ))
         ) : (
-          <div className="empty-state">No sessions found</div>
+          <div className="empty-state">No rounds found</div>
         )}
       </div>
     </details>

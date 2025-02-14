@@ -1,222 +1,253 @@
 import { create } from 'zustand'
-import { supabase, saveCompletedSession } from '../../supabase-client'
+import { supabase } from '../supabase-client'
+import { useTaskStore } from './taskStore'
 
-const initialRoundInfo = {
-  t: 0,
-  focusNum: 1,
-  current: "focus",
-  running: false,
-  pattern: null,
-  patternPosition: 0,
-  currentRoundIndex: 0,
-  sessionStartTime: null  // Add this to track when the focus period started
+const initialTimerState = {
+  elapsed_time: 0,
+  is_running: false,
+  current_session_id: null,
+  current_task_id: null,
+  pattern_position: 0
 }
 
 export const useTimerStore = create((set, get) => ({
-  roundInfo: { ...initialRoundInfo },
+  timerState: { ...initialTimerState },
   currentSession: null,
 
   loadTimerState: async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const { data: timerState } = await supabase
-      .from('timer_states')
-      .select('*')
+    console.log('Loading timer state from Supabase')
+
+    const { data: timer } = await supabase
+      .from('timer')
+      .select(`
+        *,
+        current_session:sessions(
+          pattern,
+          goals
+        )
+      `)
       .eq('user_id', user.id)
       .maybeSingle()
 
-    if (timerState) {
-      const session = timerState.session_pattern ? {
-        pattern: timerState.session_pattern,
-        goals: timerState.session_goals,
-        rounds: timerState.session_pattern.split('-').map(Number),
-        currentRoundIndex: timerState.pattern_position || 0
-      } : null
+    console.log('Loaded timer state:', timer)
+
+    if (timer) {
+      // Sync task selection with taskStore
+      if (timer.current_task_id) {
+        console.log('Syncing task selection from timer:', timer.current_task_id)
+        useTaskStore.getState().selectTask(timer.current_task_id)
+      }
 
       set({
-        currentSession: session,
-        roundInfo: {
-          ...initialRoundInfo,
-          t: timerState.time || 0,
-          running: false, // Always start paused on load
-          pattern: timerState.session_pattern,
-          current: timerState.current,
-          focusNum: timerState.focus_num,
-          currentRoundIndex: timerState.pattern_position || 0
-        }
+        timerState: {
+          elapsed_time: timer.elapsed_time || 0,
+          is_running: false, // Always start paused on load
+          current_session_id: timer.current_session_id,
+          current_task_id: timer.current_task_id,
+          pattern_position: timer.pattern_position || 0
+        },
+        currentSession: timer.current_session
       })
+      return timer
+    } else {
+      // Create initial timer record if it doesn't exist
+      const { data: newTimer, error } = await supabase
+        .from('timer')
+        .insert({
+          user_id: user.id,
+          elapsed_time: 0,
+          is_running: false,
+          pattern_position: 0
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      
+      set({ timerState: { ...initialTimerState } })
+      return newTimer
     }
   },
 
   syncTimerState: async () => {
-    const { roundInfo, currentSession } = get()
+    const { timerState } = get()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    await supabase
-      .from('timer_states')
-      .upsert({
-        user_id: user.id,
-        time: roundInfo.t,
-        current: roundInfo.current,
-        running: roundInfo.running,
-        focus_num: roundInfo.focusNum,
-        session_pattern: currentSession?.pattern,
-        session_goals: currentSession?.goals,
-        pattern_position: roundInfo.currentRoundIndex,
-        updated_at: new Date().toISOString()
-      })
-  },
+    console.log('Syncing timer state to Supabase:', timerState)
 
-  setTime: (t) => {
-    const newT = typeof t === 'function' ? t(get().roundInfo.t) : t
-    set(state => ({
-      roundInfo: { ...state.roundInfo, t: newT }
-    }))
-    get().syncTimerState()
-  },
-
-  setRunning: (running) => {
-    set(state => ({
-      roundInfo: { ...state.roundInfo, running }
-    }))
-    get().syncTimerState()
-  },
-
-  setCurrentRound: (current) => {
-    set(state => ({
-      roundInfo: { ...state.roundInfo, current }
-    }))
-    get().syncTimerState()
-  },
-
-  setFocusNum: (focusNum) => {
-    set(state => ({
-      roundInfo: { ...state.roundInfo, focusNum }
-    }))
-    get().syncTimerState()
-  },
-
-  setPattern: (pattern) => set(state => ({
-    roundInfo: { ...state.roundInfo, pattern }
-  })),
-
-  setPatternPosition: (patternPosition) => set(state => ({
-    roundInfo: { ...state.roundInfo, patternPosition }
-  })),
-
-  setCurrentSession: (session) => set({ currentSession: session }),
-
-  resetRoundInfo: () => {
-    const { currentSession } = get()
-    if (currentSession) {
-      set(state => ({
-        roundInfo: {
-          ...initialRoundInfo,
-          pattern: currentSession.pattern,
-          currentRoundIndex: currentSession.currentRoundIndex
-        }
-      }))
-    } else {
-      set({ roundInfo: { ...initialRoundInfo } })
+    try {
+      const { error } = await supabase
+        .from('timer')
+        .upsert({
+          user_id: user.id,
+          ...timerState,
+          updated_at: new Date().toISOString()
+        })
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error syncing timer state:', error)
+      window.dispatchEvent(new CustomEvent('sync-error'))
     }
+  },
+
+  setElapsedTime: (time) => {
+    const newTime = typeof time === 'function' ? time(get().timerState.elapsed_time) : time
+    set(state => ({
+      timerState: { ...state.timerState, elapsed_time: newTime }
+    }))
     get().syncTimerState()
   },
 
-  updateRoundInfo: (updates) => set(state => ({
-    roundInfo: { ...state.roundInfo, ...updates }
-  })),
+  setIsRunning: (isRunning) => {
+    set(state => ({
+      timerState: { ...state.timerState, is_running: isRunning }
+    }))
+    get().syncTimerState()
+  },
+
+  setCurrentTask: (taskId) => {
+    console.log('Setting current task in timer store:', taskId)
+    set(state => ({
+      timerState: { ...state.timerState, current_task_id: taskId }
+    }))
+    get().syncTimerState()
+  },
 
   startNewSession: async (pattern, goals) => {
-    const { currentSession, roundInfo } = get()
-    
-    // Clean up existing session if any
-    if (currentSession) {
-      // If we're in a focus round and have completed either:
-      // - more than 75% of the round, or
-      // - at least 15 minutes of work
-      const duration = currentSession.rounds[currentSession.currentRoundIndex] * 60
-      if (currentSession.currentRoundIndex % 2 === 0 && 
-          (roundInfo.t >= duration * 0.75 || roundInfo.t >= 900)) { // 900 seconds = 15 minutes
-        get().nextRound()
-      }
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Must be logged in to start session')
+
+    const { data: session } = await supabase
+      .from('sessions')
+      .insert({
+        pattern,
+        goals,
+        user_id: user.id
+      })
+      .select()
+      .single()
+
+    if (!session) throw new Error('Failed to create session')
+
+    const nextState = {
+      elapsed_time: 0,
+      is_running: false,
+      current_session_id: session.id,
+      current_task_id: get().timerState.current_task_id,
+      pattern_position: 0
     }
 
-    const rounds = pattern.split('-').map(Number)
-    const session = {
-      pattern,
-      goals,
-      rounds,
-      currentRoundIndex: 0
-    }
-    
+    // Update both Supabase and local state
+    const { error: timerError } = await supabase
+      .from('timer')
+      .upsert({
+        user_id: user.id,
+        ...nextState,
+        updated_at: new Date().toISOString()
+      })
+
+    if (timerError) throw timerError
+
     set({
       currentSession: session,
-      roundInfo: {
-        ...initialRoundInfo,
-        pattern,
-        current: 'focus',
-        currentRoundIndex: 0,
-        t: 0,
-        sessionStartTime: new Date().toISOString()  // Set start time for first focus period
-      }
+      timerState: nextState
     })
-    
-    await get().syncTimerState()
+
     return session
   },
 
   nextRound: async () => {
-    const { currentSession, roundInfo } = get()
-    if (!currentSession) return
+    const { timerState } = get()
+    if (!timerState.current_session_id) return
 
-    // If completing a focus round, save the session
-    if (roundInfo.current === 'focus') {
-      const duration = currentSession.rounds[roundInfo.currentRoundIndex] * 60
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    // First, fetch the current session to ensure we have latest data
+    const { data: freshSession } = await supabase
+      .from('sessions')
+      .select('*')
+      .eq('id', timerState.current_session_id)
+      .single()
+
+    if (!freshSession) {
+      console.error('Could not find current session')
+      return
+    }
+
+    const rounds = freshSession.pattern.split('-').map(Number)
+    const nextPosition = (timerState.pattern_position + 1) % rounds.length
+
+    let createdRoundId = null
+
+    // If completing a focus round, save it
+    if (timerState.pattern_position % 2 === 0) {
+      const duration = rounds[timerState.pattern_position] * 60
       // Only save if they completed enough of the session
-      if (roundInfo.t >= duration * 0.75 || roundInfo.t >= 900) { // 75% of duration or at least 15 minutes
+      if (timerState.elapsed_time >= duration * 0.75 || timerState.elapsed_time >= 900) {
         try {
-          await saveCompletedSession({
-            taskId: null, // TODO: Get from task selection
-            startTime: roundInfo.sessionStartTime,
-            timerDuration: duration,
-            actualDuration: roundInfo.t,
-            notes: null, // TODO: Get from notes dialog if needed
-            sessionPattern: currentSession.pattern,
-            sessionGoals: currentSession.goals,
-            patternPosition: roundInfo.currentRoundIndex
-          })
+          const { data: round } = await supabase
+            .from('rounds')
+            .insert({
+              user_id: user.id,
+              session_id: freshSession.id,
+              task_id: timerState.current_task_id,
+              started_at: new Date(Date.now() - (timerState.elapsed_time * 1000)).toISOString(),
+              duration: timerState.elapsed_time,
+              pattern_position: timerState.pattern_position
+            })
+            .select()
+            .single()
+
+          if (round) {
+            createdRoundId = round.id
+          }
         } catch (error) {
-          console.error('Error saving completed session:', error)
+          console.error('Error saving completed round:', error)
         }
       }
     }
 
-    const nextIndex = (currentSession.currentRoundIndex + 1) % currentSession.rounds.length
-    const updatedSession = {
-      ...currentSession,
-      currentRoundIndex: nextIndex
+    const nextState = {
+      elapsed_time: 0,
+      is_running: false,
+      current_session_id: freshSession.id,
+      current_task_id: timerState.current_task_id,
+      pattern_position: nextPosition
     }
 
+    // Update timer state in Supabase first
+    const { error: timerError } = await supabase
+      .from('timer')
+      .upsert({
+        user_id: user.id,
+        ...nextState,
+        updated_at: new Date().toISOString()
+      })
+
+    if (timerError) {
+      console.error('Error updating timer state:', timerError)
+      return createdRoundId
+    }
+
+    // Then update local state
     set({
-      currentSession: updatedSession,
-      roundInfo: {
-        ...initialRoundInfo,
-        pattern: currentSession.pattern,
-        current: nextIndex % 2 === 0 ? 'focus' : 'break',
-        currentRoundIndex: nextIndex,
-        focusNum: nextIndex % 2 === 0 ? Math.floor(nextIndex / 2) + 1 : Math.floor(nextIndex / 2),
-        sessionStartTime: nextIndex % 2 === 0 ? new Date().toISOString() : null // Set start time for new focus periods
-      }
+      currentSession: freshSession,
+      timerState: nextState
     })
-    get().syncTimerState()
+
+    return createdRoundId
   },
 
   endCurrentSession: async () => {
     set({
       currentSession: null,
-      roundInfo: { ...initialRoundInfo }
+      timerState: { ...initialTimerState }
     })
     await get().syncTimerState()
   }

@@ -54,9 +54,9 @@ export function NewSessionDialog() {
       return
     }
 
-    const { currentSession, roundInfo } = useTimerStore.getState()
+    const { timerState, currentSession } = useTimerStore.getState()
     
-    if (currentSession && roundInfo.running) {
+    if (currentSession && timerState.is_running) {
       if (!confirm('This will end your current session. Are you sure?')) {
         return
       }

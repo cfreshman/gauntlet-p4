@@ -1,11 +1,11 @@
-import { signInWithEmail, signUpWithEmail, signOut, supabase, getCurrentSession } from './supabase-client.js'
+import { signInWithEmail, signUpWithEmail, signOut, supabase } from './src/supabase-client'
 import './auth-ui.css'
 
 export function createAuthUI() {
   // Create auth container
   const container = document.createElement('div')
   container.className = 'auth-container'
-  container.style.display = 'flex'
+  container.style.display = 'none' // Start hidden until we check auth state
   
   // Create auth box
   const box = document.createElement('div')
@@ -36,7 +36,6 @@ export function createAuthUI() {
     try {
       const { error } = await signInWithEmail(email, password)
       if (error) throw error
-      container.style.display = 'none'
     } catch (error) {
       alert(error.message)
     }
@@ -68,15 +67,15 @@ export function createAuthUI() {
     menu.appendChild(section)
 
     document.getElementById('signout')?.addEventListener('click', async () => {
-      await signOut()
-      container.style.display = 'flex'
+      try {
+        const { error } = await signOut()
+        if (error) throw error
+      } catch (error) {
+        console.error('Error signing out:', error)
+        alert('Error signing out. Please try again.')
+      }
     })
   }
-
-  // Check initial auth state
-  getCurrentSession().then(({ session }) => {
-    container.style.display = session ? 'none' : 'flex'
-  })
 
   return container
 } 

@@ -3,7 +3,7 @@ import { useTaskStore } from '../../store/taskStore'
 import { PageLayout } from '../common/PageLayout'
 import { TaskBarChart } from './TaskBarChart'
 import RoundEntries from './RoundEntries'
-import { supabase } from '../../../supabase-client'
+import { getRounds } from '../../supabase-client'
 
 const TIME_PERIODS = {
   '0': 'Today',
@@ -30,7 +30,7 @@ export function Statistics() {
   const [selectedPeriod, setSelectedPeriod] = useState('7')
   const [selectedTasks, setSelectedTasks] = useState(['all'])
   const [stats, setStats] = useState(DEFAULT_STATS)
-  const [sessions, setSessions] = useState([])
+  const [rounds, setRounds] = useState([])
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
@@ -59,13 +59,10 @@ export function Statistics() {
   }, [selectedPeriod, selectedTasks])
 
   async function fetchStats() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
     // If no tasks are selected, show no data
     if (!selectedTasks.length) {
       setStats(DEFAULT_STATS)
-      setSessions([])
+      setRounds([])
       return
     }
 
@@ -78,37 +75,27 @@ export function Statistics() {
       startDate = new Date(0) // Beginning of time
     }
 
-    // Build query
-    let query = supabase
-      .from('daily_sessions')
-      .select(`
-        *,
-        tasks(name)
-      `)
-      .gte('start_time', startDate.toISOString())
-      .lte('start_time', now.toISOString())
-      .order('start_time', { ascending: false })
-
-    if (!selectedTasks.includes('all')) {
-      query = query.in('task_id', selectedTasks)
-    }
-
-    const { data: sessions, error } = await query
+    const { data: rounds, error } = await getRounds(startDate, now)
 
     if (error) {
-      console.error('Error fetching sessions:', error)
+      console.error('Error fetching rounds:', error)
       return
     }
 
-    if (!sessions?.length) {
+    if (!rounds?.length) {
       setStats(DEFAULT_STATS)
-      setSessions([])
+      setRounds([])
       return
     }
 
-    setSessions(sessions)
+    // Filter by selected tasks if not "all"
+    const filteredRounds = !selectedTasks.includes('all')
+      ? rounds.filter(round => selectedTasks.includes(round.task_id))
+      : rounds
 
-    // Process sessions for stats
+    setRounds(filteredRounds)
+
+    // Process rounds for stats
     const taskDist = {}
     const hourlyDist = {}
     const dailyDist = {}
@@ -117,16 +104,16 @@ export function Statistics() {
     let shortest = Infinity
     let longest = 0
 
-    sessions.forEach(session => {
-      const duration = session.actual_duration
+    filteredRounds.forEach(round => {
+      const duration = round.duration
       if (!duration) return
 
       // Task distribution
-      const taskName = session.tasks?.name || 'No Task'
+      const taskName = round.task?.name || 'No Task'
       taskDist[taskName] = (taskDist[taskName] || 0) + duration
 
       // Time distributions
-      const date = new Date(session.start_time)
+      const date = new Date(round.started_at)
       const hour = date.getHours()
       const hourKey = `${hour}:00-${hour + 1}:00`
       const dayKey = date.toLocaleDateString('en-US', { weekday: 'long' })
@@ -144,8 +131,8 @@ export function Statistics() {
 
     setStats({
       total,
-      rounds: sessions.length,
-      average: Math.round(total / sessions.length),
+      rounds: filteredRounds.length,
+      average: Math.round(total / filteredRounds.length),
       shortest: shortest === Infinity ? 0 : shortest,
       longest,
       taskDistribution: Object.entries(taskDist).map(([name, time]) => ({ name, time })),
@@ -227,7 +214,7 @@ export function Statistics() {
                     })
                   }}
                 />
-                {task.title}
+                {task.name}
               </label>
             ))}
           </div>
@@ -307,20 +294,20 @@ export function Statistics() {
       />
 
       <RoundEntries 
-        sessions={sessions} 
+        rounds={rounds} 
         onDelete={async (deletedId) => {
-          // Update local state immediately to remove the deleted session
-          setSessions(prevSessions => prevSessions.filter(session => session.id !== deletedId));
+          // Update local state immediately to remove the deleted round
+          setRounds(prevRounds => prevRounds.filter(round => round.id !== deletedId))
           
           // Show sync indicator
-          window.dispatchEvent(new Event('sync-start'));
+          window.dispatchEvent(new Event('sync-start'))
           
           // Fetch fresh data after a delay
-          await new Promise(resolve => setTimeout(resolve, 500));
-          await fetchStats();
+          await new Promise(resolve => setTimeout(resolve, 500))
+          await fetchStats()
           
           // Hide sync indicator
-          window.dispatchEvent(new Event('sync-end'));
+          window.dispatchEvent(new Event('sync-end'))
         }} 
       />
     </PageLayout>

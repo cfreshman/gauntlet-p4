@@ -67,7 +67,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1em;
+  margin-top: 2em;
 }
 
 #timer .time-display {
@@ -118,4 +118,95 @@
 #pauseplay.playing .paused,
 #pauseplay.paused .playing {
   display: none;
+}
+
+/* Notes Dialog */
+#notes-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: var(--bgcolor);
+  padding: 2rem;
+  border-radius: 12px;
+  border: none;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  z-index: 2000;
+}
+
+#notes-dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1999;
+}
+
+#notes-dialog h2 {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--coloraccent);
+  margin-bottom: 0.5rem;
+}
+
+#notes-dialog .dialog-desc {
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+  opacity: 0.8;
+}
+
+#round-notes {
+  width: 100%;
+  min-height: 120px;
+  padding: 0.75rem;
+  background-color: var(--bgcolor2);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: var(--color);
+  resize: vertical;
+  margin: 0.5rem 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  transition: border-color 0.2s;
+}
+
+#round-notes:hover {
+  border-color: var(--coloraccent);
+}
+
+#round-notes:focus {
+  border-color: var(--coloraccent);
+  outline: none;
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.dialog-buttons button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.dialog-buttons button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.dialog-buttons .secondary {
+  background-color: var(--bgcolor2);
+  color: var(--color);
+}
+
+.dialog-buttons .primary {
+  background-color: var(--coloraccent);
+  color: var(--bgcolor);
 } 

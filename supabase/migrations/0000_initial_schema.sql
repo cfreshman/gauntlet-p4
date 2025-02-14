@@ -1,8 +1,11 @@
--- Drop our tables if they exist
-drop table if exists daily_sessions, timer_states, tasks cascade;
-
--- Drop old tables
+-- Drop ALL existing tables and objects
+drop table if exists daily_sessions cascade;
+drop table if exists timer_states cascade;
+drop table if exists tasks cascade;
 drop table if exists pomodoro_sessions cascade;
+drop table if exists rounds cascade;
+drop table if exists sessions cascade;
+drop table if exists timer cascade;
 
 -- Drop existing trigger
 drop trigger if exists on_auth_user_created on auth.users;
@@ -13,7 +16,7 @@ drop publication if exists supabase_realtime cascade;
 -- Create base publication
 create publication supabase_realtime;
 
--- Create tasks table
+-- Create tasks table (work categories)
 create table tasks (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id),
@@ -21,7 +24,6 @@ create table tasks (
   created_at timestamp with time zone default now()
 );
 
--- Add unique constraint on user_id + name
 create unique index tasks_user_name_idx on tasks(user_id, name);
 
 alter table tasks enable row level security;
@@ -38,62 +40,76 @@ create policy "Users can update own tasks"
 create policy "Users can delete own tasks"
   on tasks for delete using (auth.uid() = user_id);
 
--- Create timer states table
-create table timer_states (
-  user_id uuid primary key references auth.users(id),
-  current text not null,
-  time integer not null,
-  remaining_time integer,
-  started_at timestamp with time zone,
-  running boolean not null,
-  focus_num integer not null,
-  selected_task text,
-  session_pattern text,           -- The current session pattern (e.g., "25-5-25-15") if a session is active
-  session_goals text,             -- Goals for the current session
-  pattern_position integer,       -- Current position in the pattern (0-based index)
-  updated_at timestamp with time zone default now()
-);
-
-alter table timer_states enable row level security;
-alter table timer_states replica identity full;  -- Enable realtime
-
-create policy "Users can view own timer state"
-  on timer_states for select using (auth.uid() = user_id);
-
-create policy "Users can update own timer state"
-  on timer_states for update using (auth.uid() = user_id);
-
-create policy "Users can insert own timer state"
-  on timer_states for insert with check (auth.uid() = user_id);
-
--- Create daily sessions table
-create table daily_sessions (
+-- Create sessions table (pattern and goals)
+create table sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id),
-  task_id uuid references tasks(id),
-  start_time timestamp with time zone not null,
-  end_time timestamp with time zone not null,
-  timer_duration integer not null,    -- What they set the timer to
-  actual_duration integer not null,   -- How long they actually worked
-  notes text,                        -- Context about what they did
-  session_pattern text,              -- The pattern for this session (e.g., "25-5-25-15")
-  session_goals text,                -- Goals for this session
-  pattern_position integer,          -- Position in pattern when this focus period occurred
+  pattern text not null,              -- e.g., "25-5-25-15"
+  goals text,                         -- What user wants to accomplish
   created_at timestamp with time zone default now()
 );
 
-create index sessions_user_time_idx on daily_sessions(user_id, start_time);
-
-alter table daily_sessions enable row level security;
+alter table sessions enable row level security;
 
 create policy "Users can view own sessions"
-  on daily_sessions for select using (auth.uid() = user_id);
+  on sessions for select using (auth.uid() = user_id);
 
 create policy "Users can insert own sessions"
-  on daily_sessions for insert with check (auth.uid() = user_id);
+  on sessions for insert with check (auth.uid() = user_id);
 
 create policy "Users can delete own sessions"
-  on daily_sessions for delete using (auth.uid() = user_id);
+  on sessions for delete using (auth.uid() = user_id);
 
--- Enable realtime
-alter publication supabase_realtime add table public.timer_states; 
+-- Create rounds table (completed focus periods)
+create table rounds (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id),
+  session_id uuid references sessions(id),
+  task_id uuid references tasks(id),
+  started_at timestamp with time zone not null,  -- When the round started
+  duration integer not null,           -- How long they worked
+  notes text,                         -- What was accomplished
+  pattern_position integer not null    -- Position in session pattern
+);
+
+create index rounds_user_time_idx on rounds(user_id, started_at);
+
+alter table rounds enable row level security;
+
+create policy "Users can view own rounds"
+  on rounds for select using (auth.uid() = user_id);
+
+create policy "Users can insert own rounds"
+  on rounds for insert with check (auth.uid() = user_id);
+
+create policy "Users can update own rounds"
+  on rounds for update using (auth.uid() = user_id);
+
+create policy "Users can delete own rounds"
+  on rounds for delete using (auth.uid() = user_id);
+
+-- Create timer table (current countdown state)
+create table timer (
+  user_id uuid primary key references auth.users(id),
+  elapsed_time integer not null,       -- Current time in seconds
+  is_running boolean not null,         -- Whether timer is counting
+  current_session_id uuid references sessions(id),  -- Current active session
+  current_task_id uuid references tasks(id),       -- Currently selected task
+  pattern_position integer,            -- Position in current pattern (0-based)
+  updated_at timestamp with time zone default now()
+);
+
+alter table timer enable row level security;
+alter table timer replica identity full;  -- Enable realtime
+
+create policy "Users can view own timer"
+  on timer for select using (auth.uid() = user_id);
+
+create policy "Users can update own timer"
+  on timer for update using (auth.uid() = user_id);
+
+create policy "Users can insert own timer"
+  on timer for insert with check (auth.uid() = user_id);
+
+-- Enable realtime for timer
+alter publication supabase_realtime add table public.timer; 

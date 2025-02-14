@@ -14,6 +14,18 @@ export function TopNav() {
   const pipWindowRef = useRef(null)
   const pipRootRef = useRef(null)
 
+  // Don't show nav if no tasks exist
+  if (tasks.length === 0) {
+    return null
+  }
+
+  // Sync selected task to timer store
+  useEffect(() => {
+    if (selectedTaskId) {
+      useTimerStore.getState().setCurrentTask(selectedTaskId)
+    }
+  }, [selectedTaskId])
+
   useEffect(() => {
     // Create canvas and video elements for standard PIP fallback
     const canvas = document.createElement('canvas')
@@ -35,11 +47,14 @@ export function TopNav() {
 
     // Draw timer function for standard PIP
     const drawTimer = () => {
-      const { roundInfo, currentSession } = useTimerStore.getState()
-      const { t, running } = roundInfo
-      const duration = currentSession?.rounds?.[currentSession?.currentRoundIndex] * 60 || 1500
-      const minutes = Math.floor((duration - t) / 60)
-      const seconds = (duration - t) % 60
+      const { timerState, currentSession } = useTimerStore.getState()
+      const { elapsed_time, is_running, pattern_position } = timerState
+      
+      // Get current round duration from pattern
+      const rounds = currentSession?.pattern.split('-').map(Number) || [25]
+      const duration = (rounds[pattern_position] || 25) * 60
+      const minutes = Math.floor((duration - elapsed_time) / 60)
+      const seconds = (duration - elapsed_time) % 60
 
       const ctx = canvas.getContext('2d')
       
@@ -51,7 +66,7 @@ export function TopNav() {
       const centerX = canvas.width / 2
       const centerY = canvas.height / 2
       const radius = 120
-      const progress = 1 - (t / duration)
+      const progress = 1 - (elapsed_time / duration)
       const startAngle = -Math.PI / 2
       const endAngle = startAngle + (2 * Math.PI * progress)
 

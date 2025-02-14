@@ -41,20 +41,25 @@
   background-color: var(--bgcolor2);
   color: var(--color);
   border: none;
-  padding: 0.5rem;
-  border-radius: 4px;
+  padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+  border-radius: 6px;
   font-size: 0.9rem;
   cursor: pointer;
-  opacity: 0.8;
-  transition: opacity 0.2s;
+  transition: background-color 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fff'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 1.25rem;
+  min-width: 150px;
+  opacity: 1;
 }
 
 #task-select:hover {
-  opacity: 1;
+  background-color: var(--bgcolor);
 }
 
 #task-select:focus {
   outline: none;
-  opacity: 1;
   box-shadow: 0 0 0 2px var(--coloraccent);
 } 

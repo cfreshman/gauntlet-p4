@@ -14,7 +14,7 @@ import { useThemeStore } from './store/themeStore'
 import { useNotificationStore } from './store/notificationStore'
 import { useTaskStore } from './store/taskStore'
 import { useTimerStore } from './store/timerStore'
-import { supabase } from './supabase-client'
+import { supabase, subscribeToTimer } from './supabase-client'
 
 export function App() {
   const { theme, accent, setTheme } = useThemeStore()
@@ -36,6 +36,27 @@ export function App() {
             loadTasks(),
             loadTimerState()
           ])
+
+          // Subscribe to timer changes
+          const subscription = await subscribeToTimer(async (payload) => {
+            if (payload.eventType === 'UPDATE') {
+              const { elapsed_time, is_running, pattern_position, current_session_id, current_task_id } = payload.new
+              const timerState = useTimerStore.getState().timerState
+              
+              // Only update if the state is different
+              if (timerState.elapsed_time !== elapsed_time ||
+                  timerState.is_running !== is_running ||
+                  timerState.pattern_position !== pattern_position ||
+                  timerState.current_session_id !== current_session_id ||
+                  timerState.current_task_id !== current_task_id) {
+                await loadTimerState()
+              }
+            }
+          })
+
+          return () => {
+            subscription.unsubscribe()
+          }
         }
       } catch (error) {
         console.error('Error initializing app:', error)
@@ -44,9 +65,16 @@ export function App() {
       }
     }
 
-    initialize()
+    const cleanup = initialize()
+    return () => {
+      if (cleanup && typeof cleanup.then === 'function') {
+        cleanup.then(fn => fn && fn())
+      }
+    }
+  }, [])
 
-    // Subscribe to auth changes
+  // Subscribe to auth changes
+  useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         setTheme(theme, accent)

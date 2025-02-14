@@ -31,6 +31,11 @@
   opacity: 1;
 }
 
+.control-button.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .control-button .material-icons-round {
   font-size: 3rem;
 }

@@ -6,6 +6,7 @@ import { IconButton } from '../common/IconButton'
 export function Controls() {
   const { timerState, currentSession } = useTimerStore()
   const { pattern_position } = timerState
+  const [isNexting, setIsNexting] = useState(false)
   // Calculate focus round number (every even position is a focus round)
   const focusNum = Math.floor((pattern_position + 2) / 2)
   // Calculate total focus rounds from pattern
@@ -15,6 +16,20 @@ export function Controls() {
   
   const { volume, setVolume, audioType } = useAudioStore()
   const [showVolume, setShowVolume] = useState(false)
+
+  const handleNext = async () => {
+    if (isNexting) return
+    setIsNexting(true)
+    try {
+      await useTimerStore.getState().nextRound()
+    } catch (error) {
+      console.error('Error moving to next round:', error)
+      // Force reload timer state to ensure sync
+      await useTimerStore.getState().loadTimerState()
+    } finally {
+      setIsNexting(false)
+    }
+  }
 
   return (
     <div className="controls-container">
@@ -64,8 +79,9 @@ export function Controls() {
         id="next"
         title="Next Round"
         icon="skip_next"
-        className="control-button"
-        onClick={() => useTimerStore.getState().nextRound()}
+        className={`control-button ${isNexting ? 'disabled' : ''}`}
+        onClick={handleNext}
+        disabled={isNexting}
       />
     </div>
   )

@@ -136,12 +136,12 @@ export function Timer({ isPip }) {
         </svg>
 
         <div className="timer-content">
-          <div id="time" className="time-display">
-            {formatTime(elapsed_time)}
-          </div>
-
           <div id="status" className="status-text">
             {isBreak ? (isLongBreak ? 'LONG BREAK' : 'SHORT BREAK') : 'FOCUS'}
+          </div>
+
+          <div id="time" className="time-display">
+            {formatTime(elapsed_time)}
           </div>
 
           <button 

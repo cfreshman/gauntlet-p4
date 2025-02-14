@@ -15,19 +15,11 @@
 		<!-- PWA -->
 		<link rel="manifest" href="/site.webmanifest" />
 		
-		<!-- Hide icons while loading -->
-		<style>
-			.material-icons-round {
-				display: none;
-			}
-			.fonts-loaded .material-icons-round {
-				display: inline-block;
-			}
-		</style>
+		<!-- Material Icons Font - Load Blocking -->
+		<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 		
-		<!-- Fonts -->
-		<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" onload="document.documentElement.classList.add('fonts-loaded')">
-		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+		<!-- Inter Font - Load Async -->
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 	</head>
 	<body>
 		<div id="root"></div>

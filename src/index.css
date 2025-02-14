@@ -226,4 +226,13 @@ body:not(.authenticated) .auth-container {
 
 .action-button:hover {
 	opacity: 0.9;
-} 
+}
+
+/* Hide material icons before font loads */
+/* .material-icons-round {
+	opacity: 0;
+}
+
+.fonts-loaded .material-icons-round {
+	opacity: 1;
+}  */

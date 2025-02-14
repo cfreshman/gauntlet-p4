@@ -54,21 +54,29 @@ export const useTimerStore = create((set, get) => ({
       return timer
     } else {
       // Create initial timer record if it doesn't exist
-      const { data: newTimer, error } = await supabase
-        .from('timer')
-        .insert({
-          user_id: user.id,
-          elapsed_time: 0,
-          is_running: false,
-          pattern_position: 0
-        })
-        .select()
-        .single()
+      try {
+        const { data: newTimer, error } = await supabase
+          .from('timer')
+          .upsert({
+            user_id: user.id,
+            elapsed_time: 0,
+            is_running: false,
+            pattern_position: 0
+          })
+          .select()
+          .single()
 
-      if (error) throw error
-      
-      set({ timerState: { ...initialTimerState } })
-      return newTimer
+        if (error) {
+          console.error('Error creating timer record:', error)
+          return null
+        }
+        
+        set({ timerState: { ...initialTimerState } })
+        return newTimer
+      } catch (error) {
+        console.error('Error creating timer record:', error)
+        return null
+      }
     }
   },
 

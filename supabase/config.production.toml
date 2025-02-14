@@ -1,13 +1,12 @@
-# Project Config
-project_id = "wfsvaxfmufqxpltzxxaq"
+# Production Config
+project_id = "ydyeriawqcyonzekzjgz"
 
 [api]
-# Port to use for the API URL.
 port = 54321
 
 [auth]
 enabled = true
-site_url = "http://localhost:3000"
+site_url = "https://gauntlet-p4.onrender.com"
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10

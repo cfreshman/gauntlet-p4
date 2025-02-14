@@ -47,9 +47,12 @@ export function createAuthUI() {
     const password = box.querySelector('#password').value
     
     try {
-      const { error } = await signUpWithEmail(email, password)
-      if (error) throw error
-      alert('Check your email for the confirmation link')
+      // Sign up the user
+      const { error: signUpError } = await signUpWithEmail(email, password)
+      if (signUpError) throw signUpError
+
+      // Sign in immediately after signup
+      await signInWithEmail(email, password)
     } catch (error) {
       alert(error.message)
     }

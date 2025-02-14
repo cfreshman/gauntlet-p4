@@ -7,6 +7,10 @@ drop table if exists rounds cascade;
 drop table if exists sessions cascade;
 drop table if exists timer cascade;
 
+-- Drop auth data
+delete from auth.users;
+delete from auth.identities;
+
 -- Drop existing trigger
 drop trigger if exists on_auth_user_created on auth.users;
 

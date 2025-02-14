@@ -29,13 +29,18 @@ export async function signInWithEmail(email, password) {
 }
 
 export async function signUpWithEmail(email, password) {
-  return await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: window.location.origin
-    }
-  })
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password
+    })
+    
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('Error signing up:', error)
+    return { error }
+  }
 }
 
 export async function signOut() {

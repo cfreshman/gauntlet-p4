@@ -1,8 +1,14 @@
 #!/bin/bash
 
-# Load environment variables from .env
+# Load environment variables from correct .env file
 set -a
-source .env
+if [ "$NODE_ENV" = "production" ]; then
+  source .env.production
+  cp supabase/config.production.toml supabase/config.toml
+else
+  source .env.development
+  cp supabase/config.development.toml supabase/config.toml
+fi
 set +a
 
 # Check if environment variables are set
@@ -20,7 +26,7 @@ if [ -z "$SUPABASE_DB_PASSWORD" ]; then
     exit 1
 fi
 
-echo "Running database reset..."
+echo "Running database reset for ${NODE_ENV:-development}..."
 
 # Link to Supabase project
 echo "Linking to Supabase project..."
@@ -33,5 +39,8 @@ supabase migration repair --status reverted 0000
 # Push our schema
 echo "Pushing schema..."
 supabase db push
+
+# Cleanup
+rm supabase/config.toml
 
 echo "Reset complete!" 

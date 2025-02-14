@@ -148,7 +148,13 @@ export function Timer({ isPip }) {
             id="pauseplay" 
             className={is_running ? 'playing' : 'paused'} 
             title={is_running ? 'Pause Timer' : 'Start Timer'}
-            onClick={() => useTimerStore.getState().setIsRunning(!is_running)}
+            onClick={async () => {
+              if (!currentSession) {
+                // Create default Pomodoro session if none exists
+                await useTimerStore.getState().startNewSession('25-5-25-5-25-5-25-15', 'Default Pomodoro Session')
+              }
+              useTimerStore.getState().setIsRunning(!is_running)
+            }}
           >
             <span className="material-icons-round playing">pause_circle</span>
             <span className="material-icons-round paused">play_circle</span>

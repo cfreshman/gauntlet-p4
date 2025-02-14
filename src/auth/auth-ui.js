@@ -1,4 +1,4 @@
-import { signInWithEmail, signUpWithEmail, signOut, supabase } from './src/supabase-client'
+import { signInWithEmail, signUpWithEmail, signOut, supabase } from '../supabase-client'
 import './auth-ui.css'
 
 export function createAuthUI() {

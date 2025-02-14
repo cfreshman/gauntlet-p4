@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { createAuthUI } from './auth/auth-ui'
 import { App } from './App'
-import { createAuthUI } from '../auth-ui'
 import { supabase } from './supabase-client'
 import './index.css'
 

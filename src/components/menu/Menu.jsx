@@ -128,7 +128,7 @@ export function Menu() {
           className="button-link"
           rel="noopener noreferrer"
         >
-          <img alt="GitHub" src="./GitHub-Mark-64px.png" />
+          <img alt="GitHub" src="/GitHub-Mark-64px.png" />
           View Original Tomodoro
         </a>
 

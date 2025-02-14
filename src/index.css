@@ -9,7 +9,7 @@
 @import url('./components/session/CurrentSession.css');
 @import url('./components/common/SyncIndicator.css');
 @import url('./components/common/FirstLoad.css');
-@import url('../auth-ui.css');
+@import url('./auth/auth-ui.css');
 
 * {
 	box-sizing: border-box;

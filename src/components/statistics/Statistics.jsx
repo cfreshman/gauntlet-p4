@@ -270,19 +270,6 @@ export function Statistics() {
       <h2>Task Distribution</h2>
       <TaskBarChart data={stats.taskDistribution} />
 
-      <h2>Daily Distribution</h2>
-      <TaskBarChart 
-        data={[
-          { name: 'Monday', time: stats.dailyDistribution['Monday'] || 0 },
-          { name: 'Tuesday', time: stats.dailyDistribution['Tuesday'] || 0 },
-          { name: 'Wednesday', time: stats.dailyDistribution['Wednesday'] || 0 },
-          { name: 'Thursday', time: stats.dailyDistribution['Thursday'] || 0 },
-          { name: 'Friday', time: stats.dailyDistribution['Friday'] || 0 },
-          { name: 'Saturday', time: stats.dailyDistribution['Saturday'] || 0 },
-          { name: 'Sunday', time: stats.dailyDistribution['Sunday'] || 0 }
-        ]} 
-      />
-
       <h2>Hourly Distribution</h2>
       <TaskBarChart 
         data={[
@@ -313,8 +300,21 @@ export function Statistics() {
         ]} 
       />
 
+      <h2>Daily Distribution</h2>
+      <TaskBarChart 
+        data={[
+          { name: 'Monday', time: stats.dailyDistribution['Monday'] || 0 },
+          { name: 'Tuesday', time: stats.dailyDistribution['Tuesday'] || 0 },
+          { name: 'Wednesday', time: stats.dailyDistribution['Wednesday'] || 0 },
+          { name: 'Thursday', time: stats.dailyDistribution['Thursday'] || 0 },
+          { name: 'Friday', time: stats.dailyDistribution['Friday'] || 0 },
+          { name: 'Saturday', time: stats.dailyDistribution['Saturday'] || 0 },
+          { name: 'Sunday', time: stats.dailyDistribution['Sunday'] || 0 }
+        ]} 
+      />
+
       <h2>Weekly Focus Heatmap</h2>
-      <HeatmapCalendar data={stats.weeklyHeatmap} />
+      <HeatmapCalendar data={stats.weeklyHeatmap} dailyDistribution={stats.dailyDistribution} />
 
       <h2>Monthly Distribution</h2>
       <TaskBarChart 

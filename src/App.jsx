@@ -78,9 +78,14 @@ export function App() {
     )
   }
 
-  // If no tasks exist, only show the task manager
+  // If no tasks exist, only show the task manager and first load
   if (tasks.length === 0) {
-    return <TaskManager />
+    return (
+      <>
+        <FirstLoad />
+        <TaskManager />
+      </>
+    )
   }
 
   return (
@@ -99,7 +104,6 @@ export function App() {
       <TaskManager />
       <NewSessionDialog />
       <SyncIndicator />
-      <FirstLoad />
     </>
   )
 } 

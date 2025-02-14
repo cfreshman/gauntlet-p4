@@ -37,17 +37,16 @@ export function TaskManager() {
     return (
       <div id="managetasks" style={{ display: 'flex' }}>
         <div className="tasks-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '2rem' }}>
-          <h1 style={{ color: 'var(--coloraccent)', marginBottom: '1rem' }}>Welcome to Gomodoro</h1>
+          <h1 style={{ color: 'var(--coloraccent)', marginBottom: '1rem' }}>Create Your First Task</h1>
           <div style={{ marginBottom: '2rem', maxWidth: '500px', lineHeight: '1.6' }}>
-            Before you can start using the timer, you need to create at least one task to track.
-            Tasks help you categorize and analyze how you spend your focus time.
+            A work category, not specific goal. Used to track long-term trends.
           </div>
           
           <form id="newtask" className="task" onSubmit={handleSubmit} style={{ maxWidth: '400px', width: '100%' }}>
             <input
               type="text"
               maxLength="25"
-              placeholder="Enter your first task (e.g., Coding, Writing, Study)"
+              placeholder="e.g., Coding, Writing, Study"
               className="task-input"
               value={newTaskName}
               onChange={(e) => setNewTaskName(e.target.value)}

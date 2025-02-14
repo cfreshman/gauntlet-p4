@@ -1,14 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
 
-// Load environment variables
-dotenv.config()
+// Load development environment variables
+dotenv.config({ path: '.env.development' })
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase environment variables')
+  throw new Error('Missing Supabase environment variables in .env.development')
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey)
@@ -87,7 +87,6 @@ async function seedDatabase() {
     })
 
     if (signInError) throw signInError
-
     console.log('Signed in as test user')
 
     // Create tasks
@@ -100,7 +99,6 @@ async function seedDatabase() {
       .select()
 
     if (taskError) throw taskError
-
     console.log('Created sample tasks')
 
     // Generate sessions for the last 30 days
@@ -108,30 +106,61 @@ async function seedDatabase() {
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - 30)
 
-    let allSessions = []
+    // Create sessions and rounds
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       // Only generate sessions for weekdays
       if (d.getDay() !== 0 && d.getDay() !== 6) {
-        const daySessions = generateDaySessions(user.id, tasks, d)
-        allSessions = allSessions.concat(daySessions)
+        // Create a session for this day
+        const { data: session, error: sessionError } = await supabase
+          .from('sessions')
+          .insert({
+            user_id: user.id,
+            pattern: '25-5-25-5-25-5-25-15',
+            goals: `Sample goals for ${d.toDateString()}`,
+            created_at: d.toISOString()
+          })
+          .select()
+          .single()
+
+        if (sessionError) throw sessionError
+
+        // Generate 4-8 focus rounds for this session
+        const numRounds = 4 + Math.floor(Math.random() * 5)
+        let currentTime = new Date(d)
+        currentTime.setHours(9) // Start at 9 AM
+
+        for (let i = 0; i < numRounds; i++) {
+          // Add some random time between rounds (15-45 minutes)
+          currentTime = new Date(currentTime.getTime() + (15 + Math.floor(Math.random() * 30)) * 60000)
+          
+          const duration = randomDuration() * 60 // Convert to seconds
+          
+          const { error: roundError } = await supabase
+            .from('rounds')
+            .insert({
+              user_id: user.id,
+              session_id: session.id,
+              task_id: tasks[Math.floor(Math.random() * tasks.length)].id,
+              started_at: currentTime.toISOString(),
+              duration: duration,
+              notes: `Sample round ${i + 1} for ${currentTime.toDateString()}`,
+              pattern_position: i * 2 // Only store focus rounds, not breaks
+            })
+
+          if (roundError) throw roundError
+
+          // Move time forward by the round duration plus break
+          currentTime = new Date(currentTime.getTime() + duration * 1000 + 5 * 60000) // Add 5 min break
+        }
       }
     }
 
-    // Insert sessions in batches of 50
-    for (let i = 0; i < allSessions.length; i += 50) {
-      const batch = allSessions.slice(i, i + 50)
-      const { error: sessionError } = await supabase
-        .from('daily_sessions')
-        .insert(batch)
-
-      if (sessionError) throw sessionError
-    }
-
-    console.log(`Created ${allSessions.length} sample sessions`)
+    console.log('Created sample sessions and rounds')
     console.log('Database seeding completed successfully')
 
   } catch (error) {
     console.error('Error seeding database:', error)
+    console.error('Error details:', error.message)
   }
 }
 

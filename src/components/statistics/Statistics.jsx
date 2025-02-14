@@ -122,8 +122,9 @@ export function Statistics() {
 
         // Weekly heatmap data
         const dayIndex = date.getDay() // 0-6 for Sunday-Saturday
-        weeklyHeatmap[dayIndex] = weeklyHeatmap[dayIndex] || {}
-        weeklyHeatmap[dayIndex][hour] = (weeklyHeatmap[dayIndex][hour] || 0) + Math.floor(duration / 60) // Convert seconds to minutes
+        const adjustedDayIndex = dayIndex === 0 ? 6 : dayIndex - 1 // Convert to Monday=0, Sunday=6
+        weeklyHeatmap[adjustedDayIndex] = weeklyHeatmap[adjustedDayIndex] || {}
+        weeklyHeatmap[adjustedDayIndex][hour] = (weeklyHeatmap[adjustedDayIndex][hour] || 0) + Math.floor(duration / 60) // Convert seconds to minutes
 
         hourlyDist[hourKey] = (hourlyDist[hourKey] || 0) + duration
         dailyDist[dayKey] = (dailyDist[dayKey] || 0) + duration

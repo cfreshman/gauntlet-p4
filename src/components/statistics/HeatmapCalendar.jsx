@@ -8,8 +8,8 @@ export function HeatmapCalendar({ data, dailyDistribution }) {
     `${i.toString().padStart(2, '0')}:00`
   )
   
-  // Generate array of day labels
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  // Generate array of day labels starting with Monday
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
   
   // Calculate daily totals and find max
   const dailyTotals = Object.entries(data).reduce((acc, [dayIndex, hours]) => {

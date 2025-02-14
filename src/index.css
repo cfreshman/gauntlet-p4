@@ -8,6 +8,7 @@
 @import url('./components/statistics/Statistics.css');
 @import url('./components/session/NewSessionDialog.css');
 @import url('./components/session/CurrentSession.css');
+@import url('./components/session/SessionPlanner.css');
 @import url('./components/common/SyncIndicator.css');
 @import url('./components/common/FirstLoad.css');
 @import url('./components/statistics/HeatmapCalendar.css');

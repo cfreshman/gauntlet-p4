@@ -270,4 +270,122 @@ export async function subscribeToTimer(callback) {
       callback
     )
     .subscribe()
+}
+
+export async function getTaskHistory(taskId, startDate = null) {
+  try {
+    let query = supabase
+      .from('rounds')
+      .select(`
+        id,
+        duration,
+        notes,
+        started_at,
+        pattern_position,
+        task:tasks (
+          id,
+          name
+        ),
+        session:sessions (
+          id,
+          pattern,
+          goals,
+          created_at,
+          rounds (
+            id,
+            duration,
+            notes,
+            pattern_position,
+            started_at
+          )
+        )
+      `)
+      .eq('task_id', taskId)
+      .order('started_at', { ascending: false })
+
+    if (startDate) {
+      query = query.gte('started_at', startDate)
+    }
+
+    const { data, error } = await query
+    if (error) throw error
+
+    // Process the data to calculate additional metrics
+    const processedData = data.map(round => ({
+      ...round,
+      // Calculate if round was completed (at least 75% of intended duration)
+      completed: round.duration >= (round.session.pattern.split('-')[round.pattern_position] * 60 * 0.75),
+      // Get the full session context
+      sessionContext: {
+        ...round.session,
+        totalRounds: round.session.rounds.length,
+        averageRoundDuration: round.session.rounds.reduce((sum, r) => sum + r.duration, 0) / round.session.rounds.length,
+        completionRate: round.session.rounds.filter(r => 
+          r.duration >= (round.session.pattern.split('-')[r.pattern_position] * 60 * 0.75)
+        ).length / round.session.rounds.length
+      }
+    }))
+
+    return processedData
+  } catch (error) {
+    console.error('Error fetching task history:', error)
+    return []
+  }
+}
+
+export async function getSessionPatterns(userId, startDate = null) {
+  try {
+    let query = supabase
+      .from('sessions')
+      .select(`
+        id,
+        pattern,
+        goals,
+        created_at,
+        rounds (
+          id,
+          duration,
+          notes,
+          pattern_position,
+          started_at,
+          task:tasks (
+            id,
+            name
+          )
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (startDate) {
+      query = query.gte('created_at', startDate)
+    }
+
+    const { data, error } = await query
+    if (error) throw error
+
+    // Process the data to include useful metrics
+    const processedData = data.map(session => ({
+      ...session,
+      metrics: {
+        totalRounds: session.rounds.length,
+        averageRoundDuration: session.rounds.reduce((sum, r) => sum + r.duration, 0) / session.rounds.length,
+        completionRate: session.rounds.filter(r => 
+          r.duration >= (session.pattern.split('-')[r.pattern_position] * 60 * 0.75)
+        ).length / session.rounds.length,
+        taskDistribution: session.rounds.reduce((acc, round) => {
+          const taskName = round.task?.name
+          if (taskName) {
+            acc[taskName] = (acc[taskName] || 0) + 1
+          }
+          return acc
+        }, {})
+      }
+    }))
+
+    return processedData
+  } catch (error) {
+    console.error('Error fetching session patterns:', error)
+    return []
+  }
 } 

@@ -8,6 +8,7 @@ import { TaskManager } from './components/tasks/TaskManager'
 import { TaskSelector } from './components/tasks/TaskSelector'
 import { NewSessionDialog } from './components/session/NewSessionDialog'
 import { CurrentSession } from './components/session/CurrentSession'
+import { SessionPlanner } from './components/session/SessionPlanner'
 import { SyncIndicator } from './components/common/SyncIndicator'
 import { FirstLoad } from './components/common/FirstLoad'
 import { useThemeStore } from './store/themeStore'
@@ -131,6 +132,7 @@ export function App() {
       <Statistics />
       <TaskManager />
       <NewSessionDialog />
+      <SessionPlanner />
       <SyncIndicator />
     </>
   )

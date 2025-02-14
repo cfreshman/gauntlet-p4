@@ -1,8 +1,26 @@
+# Environment variables
 .env
 .env.*
+!.env.example
+
+# Dependencies
 node_modules/
+
+# Build
 dist/
+
+# IDE
 .vscode/
+.idea/
 
 # Supabase
 supabase/.temp/
+supabase/config.toml
+
+# Logs
+*.log
+npm-debug.log*
+
+# System Files
+.DS_Store
+Thumbs.db

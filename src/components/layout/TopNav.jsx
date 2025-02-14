@@ -162,6 +162,14 @@ export function TopNav() {
         />
 
         <IconButton
+          id="plansessionbtn"
+          title="Plan Session"
+          icon="schedule"
+          className="nav-button"
+          onClick={() => document.getElementById('sessionplanner').showModal()}
+        />
+
+        <IconButton
           id="statbtn"
           title="View Statistics"
           icon="bar_chart"

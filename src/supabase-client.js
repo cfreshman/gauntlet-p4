@@ -125,6 +125,40 @@ export async function createSession(pattern, goals) {
     .single()
 }
 
+export async function getSessions(startDate, endDate) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { data: [] }
+
+  let query = supabase
+    .from('sessions')
+    .select(`
+      *,
+      rounds(
+        *,
+        task:tasks(name)
+      )
+    `)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  if (startDate) {
+    query = query.gte('created_at', startDate.toISOString())
+  }
+  if (endDate) {
+    query = query.lte('created_at', endDate.toISOString())
+  }
+
+  return await query
+}
+
+export async function deleteSession(id) {
+  return await supabase
+    .from('sessions')
+    .delete()
+    .match({ id })
+}
+
+// Round functions
 export async function getRounds(startDate, endDate) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { data: [] }

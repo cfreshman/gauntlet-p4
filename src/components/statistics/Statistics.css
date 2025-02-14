@@ -235,7 +235,7 @@
 }
 
 #stat-details {
-  margin: 2rem 0;
+  margin: 1rem 0;
 }
 
 #stat-details summary {
@@ -266,4 +266,120 @@
   font-size: 1.5rem;
   font-weight: 500;
   color: var(--coloraccent);
-} 
+}
+
+.sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.session {
+  background: var(--bgcolor2);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.time {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--coloraccent);
+}
+
+.pattern {
+  font-family: monospace;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.goals {
+  opacity: 0.8;
+  white-space: pre-wrap;
+  font-size: 0.85rem;
+  margin-top: 0.15rem;
+}
+
+.action {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--color);
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 0.15rem;
+  transition: opacity 0.2s;
+}
+
+.rounds {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--bgcolor);
+}
+
+.stat-round {
+  background: var(--bgcolor);
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+.stat-round + .stat-round {
+  margin-top: 0.35rem;
+}
+
+.stat-round-header {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stat-round-task {
+  color: var(--coloraccent);
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.stat-round-time {
+  color: var(--color);
+  opacity: 0.8;
+  font-size: 0.85rem;
+}
+
+.stat-round-duration {
+  color: var(--coloraccent);
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.stat-round-delete {
+  background: none;
+  border: none;
+  color: var(--color);
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 0.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+
+.stat-round-delete:hover {
+  opacity: 1;
+}
+
+.stat-round-notes {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--bgcolor2);
+  opacity: 0.8;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}

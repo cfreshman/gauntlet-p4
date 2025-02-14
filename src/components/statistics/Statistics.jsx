@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react'
 import { useTaskStore } from '../../store/taskStore'
 import { PageLayout } from '../common/PageLayout'
 import { TaskBarChart } from './TaskBarChart'
-import RoundEntries from './RoundEntries'
-import { getRounds } from '../../supabase-client'
+import { SessionList } from './SessionList'
+import { getSessions } from '../../supabase-client'
 
 const TIME_PERIODS = {
   '0': 'Today',
@@ -30,7 +30,7 @@ export function Statistics() {
   const [selectedPeriod, setSelectedPeriod] = useState('7')
   const [selectedTasks, setSelectedTasks] = useState(['all'])
   const [stats, setStats] = useState(DEFAULT_STATS)
-  const [rounds, setRounds] = useState([])
+  const [sessions, setSessions] = useState([])
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
@@ -59,13 +59,6 @@ export function Statistics() {
   }, [selectedPeriod, selectedTasks])
 
   async function fetchStats() {
-    // If no tasks are selected, show no data
-    if (!selectedTasks.length) {
-      setStats(DEFAULT_STATS)
-      setRounds([])
-      return
-    }
-
     // Calculate date range
     const now = new Date()
     let startDate = new Date()
@@ -75,25 +68,21 @@ export function Statistics() {
       startDate = new Date(0) // Beginning of time
     }
 
-    const { data: rounds, error } = await getRounds(startDate, now)
+    // Fetch sessions with their rounds
+    const { data: sessionsData, error: sessionsError } = await getSessions(startDate, now)
 
-    if (error) {
-      console.error('Error fetching rounds:', error)
+    if (sessionsError) {
+      console.error('Error fetching sessions:', sessionsError)
       return
     }
 
-    if (!rounds?.length) {
+    setSessions(sessionsData || [])
+
+    // If no sessions or no tasks selected, show no data
+    if (!sessionsData?.length || !selectedTasks.length) {
       setStats(DEFAULT_STATS)
-      setRounds([])
       return
     }
-
-    // Filter by selected tasks if not "all"
-    const filteredRounds = !selectedTasks.includes('all')
-      ? rounds.filter(round => selectedTasks.includes(round.task_id))
-      : rounds
-
-    setRounds(filteredRounds)
 
     // Process rounds for stats
     const taskDist = {}
@@ -101,38 +90,48 @@ export function Statistics() {
     const dailyDist = {}
     const monthlyDist = {}
     let total = 0
+    let roundCount = 0
     let shortest = Infinity
     let longest = 0
 
-    filteredRounds.forEach(round => {
-      const duration = round.duration
-      if (!duration) return
+    sessionsData.forEach(session => {
+      session.rounds?.forEach(round => {
+        // Skip if task filter is active and this round's task isn't selected
+        if (!selectedTasks.includes('all') && !selectedTasks.includes(round.task_id)) {
+          return
+        }
 
-      // Task distribution
-      const taskName = round.task?.name || 'No Task'
-      taskDist[taskName] = (taskDist[taskName] || 0) + duration
+        const duration = round.duration
+        if (!duration) return
 
-      // Time distributions
-      const date = new Date(round.started_at)
-      const hour = date.getHours()
-      const hourKey = `${hour}:00-${hour + 1}:00`
-      const dayKey = date.toLocaleDateString('en-US', { weekday: 'long' })
-      const monthKey = date.toLocaleDateString('en-US', { month: 'long' })
+        roundCount++
 
-      hourlyDist[hourKey] = (hourlyDist[hourKey] || 0) + duration
-      dailyDist[dayKey] = (dailyDist[dayKey] || 0) + duration
-      monthlyDist[monthKey] = (monthlyDist[monthKey] || 0) + duration
+        // Task distribution
+        const taskName = round.task?.name || 'No Task'
+        taskDist[taskName] = (taskDist[taskName] || 0) + duration
 
-      // Update totals
-      total += duration
-      shortest = Math.min(shortest, duration)
-      longest = Math.max(longest, duration)
+        // Time distributions
+        const date = new Date(round.started_at)
+        const hour = date.getHours()
+        const hourKey = `${hour}:00-${hour + 1}:00`
+        const dayKey = date.toLocaleDateString('en-US', { weekday: 'long' })
+        const monthKey = date.toLocaleDateString('en-US', { month: 'long' })
+
+        hourlyDist[hourKey] = (hourlyDist[hourKey] || 0) + duration
+        dailyDist[dayKey] = (dailyDist[dayKey] || 0) + duration
+        monthlyDist[monthKey] = (monthlyDist[monthKey] || 0) + duration
+
+        // Update totals
+        total += duration
+        shortest = Math.min(shortest, duration)
+        longest = Math.max(longest, duration)
+      })
     })
 
     setStats({
       total,
-      rounds: filteredRounds.length,
-      average: Math.round(total / filteredRounds.length),
+      rounds: roundCount,
+      average: roundCount > 0 ? Math.round(total / roundCount) : 0,
       shortest: shortest === Infinity ? 0 : shortest,
       longest,
       taskDistribution: Object.entries(taskDist).map(([name, time]) => ({ name, time })),
@@ -155,6 +154,23 @@ export function Statistics() {
     const entries = Object.entries(distribution)
     if (!entries.length) return 'No data available'
     return entries.sort((a, b) => b[1] - a[1])[0][0]
+  }
+
+  const handleDelete = (type, id, sessionId) => {
+    if (type === 'round') {
+      setSessions(prev => prev.map(session => {
+        if (session.id === sessionId) {
+          return {
+            ...session,
+            rounds: session.rounds.filter(round => round.id !== id)
+          }
+        }
+        return session
+      }))
+    } else if (type === 'session') {
+      setSessions(prev => prev.filter(session => session.id !== id))
+    }
+    fetchStats()
   }
 
   return (
@@ -293,23 +309,8 @@ export function Statistics() {
         data={Object.entries(stats.monthlyDistribution).map(([name, time]) => ({ name, time }))} 
       />
 
-      <RoundEntries 
-        rounds={rounds} 
-        onDelete={async (deletedId) => {
-          // Update local state immediately to remove the deleted round
-          setRounds(prevRounds => prevRounds.filter(round => round.id !== deletedId))
-          
-          // Show sync indicator
-          window.dispatchEvent(new Event('sync-start'))
-          
-          // Fetch fresh data after a delay
-          await new Promise(resolve => setTimeout(resolve, 500))
-          await fetchStats()
-          
-          // Hide sync indicator
-          window.dispatchEvent(new Event('sync-end'))
-        }} 
-      />
+      <h2>Session History</h2>
+      <SessionList sessions={sessions} onDelete={handleDelete} />
     </PageLayout>
   )
 } 

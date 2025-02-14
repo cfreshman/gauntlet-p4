@@ -112,14 +112,6 @@
   margin-bottom: 1rem;
 }
 
-#filters {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  overflow-x: auto;
-  padding: 0.5rem;
-}
-
 .task-chip {
   display: flex;
   align-items: center;

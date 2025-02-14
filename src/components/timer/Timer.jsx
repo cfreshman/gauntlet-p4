@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { useTimerStore } from '../../store/timerStore'
 import { useAudioStore } from '../../store/audioStore'
 import { useTaskStore } from '../../store/taskStore'
+import { useNotificationStore } from '../../store/notificationStore'
 import { supabase } from '../../supabase-client'
 
 export function Timer({ isPip }) {
   const { timerState, currentSession } = useTimerStore()
   const { elapsed_time, is_running, pattern_position } = timerState
   const { audioType, fadeIn, fadeOut } = useAudioStore()
+  const { notify } = useNotificationStore()
   const { getSelectedTask } = useTaskStore()
   const progressRef = useRef(null)
   const [showNotesDialog, setShowNotesDialog] = useState(false)
@@ -40,12 +42,23 @@ export function Timer({ isPip }) {
       interval = setInterval(() => {
         useTimerStore.getState().setElapsedTime(t => {
           if (t >= duration) {
+            console.log('Timer completed:', { elapsed_time: t, duration })
             clearInterval(interval)
             useTimerStore.getState().setIsRunning(false)
             
+            // Send notification when round completes
+            const roundType = isBreak ? (isLongBreak ? 'Long Break' : 'Short Break') : 'Focus'
+            console.log('Sending round completion notification:', { roundType, isBreak, isLongBreak })
+            notify(
+              `${roundType} Round Complete`,
+              isBreak ? 'Time to focus!' : 'Time for a break!'
+            )
+            
             // If completing a focus round, show notes dialog
             if (!isBreak && (t >= duration * 0.75 || t >= 900)) {
+              console.log('Focus round completed, showing notes dialog')
               useTimerStore.getState().nextRound().then(roundId => {
+                console.log('Round completed, got roundId:', roundId)
                 if (roundId) {
                   setCurrentRoundId(roundId)
                   setShowNotesDialog(true)
@@ -54,6 +67,7 @@ export function Timer({ isPip }) {
                 }
               })
             } else {
+              console.log('Break round completed, moving to next round')
               useTimerStore.getState().nextRound()
             }
             return t
@@ -63,7 +77,7 @@ export function Timer({ isPip }) {
       }, 1000)
     }
     return () => clearInterval(interval)
-  }, [is_running, duration, isPip, isBreak])
+  }, [is_running, duration, isPip, isBreak, isLongBreak, notify])
 
   // Handle notes submission
   const handleNotesSubmit = async (save) => {

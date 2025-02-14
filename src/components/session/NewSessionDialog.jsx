@@ -54,12 +54,15 @@ export function NewSessionDialog() {
       return
     }
 
-    const { timerState, currentSession } = useTimerStore.getState()
+    const { timerState, currentSession, endCurrentSession } = useTimerStore.getState()
     
     if (currentSession && timerState.is_running) {
       if (!confirm('This will end your current session. Are you sure?')) {
         return
       }
+      // Stop the timer and end current session before starting new one
+      useTimerStore.getState().setIsRunning(false)
+      endCurrentSession()
     }
 
     useTimerStore.getState().startNewSession(pattern, goals)

@@ -1,0 +1,4 @@
+RULES
+- do not delete or modify unrelated code
+- use rem or em for basically all measurements
+- suggest things to add to these rules when useful

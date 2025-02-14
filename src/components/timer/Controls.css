@@ -11,9 +11,10 @@
 .round-number {
   font-size: 2rem;
   font-weight: 500;
-  min-width: 40px;
+  min-width: 60px;
   text-align: center;
   opacity: 0.8;
+  font-variant-numeric: tabular-nums;
 }
 
 .control-button {

@@ -5,6 +5,7 @@ import { Controls } from './components/timer/Controls'
 import { Menu } from './components/menu/Menu'
 import { Statistics } from './components/statistics/Statistics'
 import { TaskManager } from './components/tasks/TaskManager'
+import { TaskSelector } from './components/tasks/TaskSelector'
 import { NewSessionDialog } from './components/session/NewSessionDialog'
 import { CurrentSession } from './components/session/CurrentSession'
 import { SyncIndicator } from './components/common/SyncIndicator'
@@ -91,11 +92,12 @@ export function App() {
         <Controls />
       </main>
 
+      <TaskSelector />
+      <CurrentSession />
       <Menu />
       <Statistics />
       <TaskManager />
       <NewSessionDialog />
-      <CurrentSession />
       <SyncIndicator />
       <FirstLoad />
     </>

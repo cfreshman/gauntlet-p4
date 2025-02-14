@@ -1,10 +1,10 @@
 .current-session {
   position: fixed;
-  top: 4rem;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 3.5rem;
+  left: 1rem;
+  transform: none;
   background-color: var(--bgcolor2);
-  padding: .5rem 1rem;
+  padding: 0.35rem;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   z-index: 100;
@@ -13,17 +13,19 @@
 
 .current-session h3 {
   color: var(--coloraccent);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
   font-size: 1rem;
+  padding: 0 0.35rem;
 }
 
 .session-pattern {
   font-family: monospace;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
   display: flex;
-  gap: 0.5rem;
+  gap: 0.35rem;
   align-items: center;
   justify-content: center;
+  padding: 0 0.35rem;
 }
 
 .round-indicator {
@@ -56,15 +58,11 @@
   white-space: pre-wrap;
   max-height: 100px;
   overflow-y: auto;
-  opacity: 1;
+  opacity: 0.8;
   margin-top: 0.5rem;
   width: 100%;
-  padding: 0.75rem;
-  background-color: var(--bgcolor);
-  border: 2px solid transparent;
-  border-radius: 8px;
+  padding: 0 0.35rem;
   color: var(--color);
-  transition: border-color 0.2s;
 }
 
 .session-goals-display:hover {

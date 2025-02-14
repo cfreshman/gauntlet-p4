@@ -8,6 +8,10 @@ export function Controls() {
   const { pattern_position } = timerState
   // Calculate focus round number (every even position is a focus round)
   const focusNum = Math.floor((pattern_position + 2) / 2)
+  // Calculate total focus rounds from pattern
+  const totalRounds = currentSession ? 
+    Math.ceil(currentSession.pattern.split('-').length / 2) : 
+    1
   
   const { volume, setVolume, audioType } = useAudioStore()
   const [showVolume, setShowVolume] = useState(false)
@@ -23,7 +27,7 @@ export function Controls() {
       />
 
       <div id="roundno" title="Number of Focus Rounds" className="round-number">
-        {focusNum}
+        {focusNum}/{totalRounds}
       </div>
 
       {audioType === 'noise' && (

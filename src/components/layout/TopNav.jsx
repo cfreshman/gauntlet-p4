@@ -7,7 +7,6 @@ import { Menu } from '../menu/Menu'
 import { Timer } from '../timer/Timer'
 
 export function TopNav() {
-  const { selectedTaskId } = useTaskStore()
   const tasks = useTaskStore(state => state.tasks)
   const canvasRef = useRef(null)
   const videoRef = useRef(null)
@@ -18,13 +17,6 @@ export function TopNav() {
   if (tasks.length === 0) {
     return null
   }
-
-  // Sync selected task to timer store
-  useEffect(() => {
-    if (selectedTaskId) {
-      useTimerStore.getState().setCurrentTask(selectedTaskId)
-    }
-  }, [selectedTaskId])
 
   useEffect(() => {
     // Create canvas and video elements for standard PIP fallback
@@ -161,43 +153,14 @@ export function TopNav() {
   return (
     <nav className="top-nav">
       <div className="nav-group">
-        {tasks.length > 0 ? (
-          <select 
-            name="task" 
-            id="task-select" 
-            title="Switch Task"
-            value={selectedTaskId || ''}
-            onChange={(e) => useTaskStore.getState().selectTask(e.target.value)}
-          >
-            {tasks.map(task => (
-              <option key={task.id} value={task.id}>{task.name}</option>
-            ))}
-          </select>
-        ) : (
-          <button
-            className="nav-button"
-            onClick={() => document.getElementById('managetasks').style.display = 'flex'}
-          >
-            Create a Task
-          </button>
-        )}
-        
         <IconButton
-          id="managetaskbtn"
-          title="Manage Tasks"
-          icon="edit"
+          id="menubtn"
+          title="Open Settings"
+          icon="menu"
           className="nav-button"
-          onClick={() => document.getElementById('managetasks').style.display = 'flex'}
+          onClick={Menu.open}
         />
 
-        <IconButton
-          id="newsessionbtn"
-          title="Start New Session"
-          icon="add_circle"
-          className="nav-button"
-          onClick={() => document.getElementById('newsession').showModal()}
-        />
-        
         <IconButton
           id="statbtn"
           title="View Statistics"
@@ -223,11 +186,19 @@ export function TopNav() {
         />
 
         <IconButton
-          id="menubtn"
-          title="Open Settings"
-          icon="menu"
+          id="managetaskbtn"
+          title="Manage Tasks"
+          icon="edit"
           className="nav-button"
-          onClick={Menu.open}
+          onClick={() => document.getElementById('managetasks').style.display = 'flex'}
+        />
+
+        <IconButton
+          id="newsessionbtn"
+          title="Start New Session"
+          icon="add_circle"
+          className="nav-button"
+          onClick={() => document.getElementById('newsession').showModal()}
         />
       </div>
     </nav>

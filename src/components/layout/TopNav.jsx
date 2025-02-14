@@ -161,30 +161,6 @@ export function TopNav() {
   return (
     <nav className="top-nav">
       <div className="nav-group">
-        <IconButton
-          id="menubtn"
-          title="Open Settings"
-          icon="menu"
-          className="nav-button"
-          onClick={Menu.open}
-        />
-        
-        <IconButton
-          id="newsessionbtn"
-          title="Start New Session"
-          icon="add_circle"
-          className="nav-button"
-          onClick={() => document.getElementById('newsession').showModal()}
-        />
-        
-        <IconButton
-          id="statbtn"
-          title="View Statistics"
-          icon="bar_chart"
-          className="nav-button"
-          onClick={() => document.getElementById('statistics').style.display = 'flex'}
-        />
-        
         {tasks.length > 0 ? (
           <select 
             name="task" 
@@ -208,10 +184,26 @@ export function TopNav() {
         
         <IconButton
           id="managetaskbtn"
-          title="Manage Task"
+          title="Manage Tasks"
           icon="edit"
           className="nav-button"
           onClick={() => document.getElementById('managetasks').style.display = 'flex'}
+        />
+
+        <IconButton
+          id="newsessionbtn"
+          title="Start New Session"
+          icon="add_circle"
+          className="nav-button"
+          onClick={() => document.getElementById('newsession').showModal()}
+        />
+        
+        <IconButton
+          id="statbtn"
+          title="View Statistics"
+          icon="bar_chart"
+          className="nav-button"
+          onClick={() => document.getElementById('statistics').style.display = 'flex'}
         />
         
         <IconButton
@@ -228,6 +220,14 @@ export function TopNav() {
               await enterPiP()
             }
           }}
+        />
+
+        <IconButton
+          id="menubtn"
+          title="Open Settings"
+          icon="menu"
+          className="nav-button"
+          onClick={Menu.open}
         />
       </div>
     </nav>

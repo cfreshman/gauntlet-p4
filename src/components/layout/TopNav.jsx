@@ -154,11 +154,11 @@ export function TopNav() {
     <nav className="top-nav">
       <div className="nav-group">
         <IconButton
-          id="menubtn"
-          title="Open Settings"
-          icon="menu"
+          id="newsessionbtn"
+          title="Start New Session"
+          icon="add_circle"
           className="nav-button"
-          onClick={Menu.open}
+          onClick={() => document.getElementById('newsession').showModal()}
         />
 
         <IconButton
@@ -168,7 +168,15 @@ export function TopNav() {
           className="nav-button"
           onClick={() => document.getElementById('statistics').style.display = 'flex'}
         />
-        
+
+        <IconButton
+          id="menubtn"
+          title="Open Settings"
+          icon="menu"
+          className="nav-button"
+          onClick={Menu.open}
+        />
+
         <IconButton
           id="popupbtn"
           title="Toggle PIP Mode"
@@ -191,14 +199,6 @@ export function TopNav() {
           icon="edit"
           className="nav-button"
           onClick={() => document.getElementById('managetasks').style.display = 'flex'}
-        />
-
-        <IconButton
-          id="newsessionbtn"
-          title="Start New Session"
-          icon="add_circle"
-          className="nav-button"
-          onClick={() => document.getElementById('newsession').showModal()}
         />
       </div>
     </nav>

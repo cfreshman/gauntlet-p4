@@ -55,7 +55,7 @@ export function Timer({ isPip }) {
               )
               
               // If completing a focus round, show notes dialog
-              if (!isBreak && (t >= duration * 0.5 || t >= 900)) {
+              if (!isBreak && t >= 60 && (t >= 600 || t >= duration * 0.5)) {
                 useTimerStore.getState().nextRound().then(roundId => {
                   if (roundId) {
                     setCurrentRoundId(roundId)

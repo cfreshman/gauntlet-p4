@@ -102,17 +102,17 @@
 .messages {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem;
+  padding: 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
   background-color: var(--bgcolor2);
   font-size: 0.75rem;
 }
 
 .message {
   background-color: var(--bgcolor);
-  padding: 0.75rem;
+  padding: 0.33rem;
   border-radius: 0.5rem;
   line-height: 1.4;
 }
@@ -133,11 +133,12 @@
 .message.header-summary {
   width: 100%;
   max-width: 100%;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+  padding: 0.33rem;
 }
 
 .header-summary .ai-header {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .ai-image {

@@ -62,6 +62,20 @@ export function AICompanion() {
     adjustHeight()
   }, [inputMessage]) // Run when input changes
 
+  // Initial resize after mount
+  useEffect(() => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    const adjustHeight = () => {
+      textarea.style.height = '1.5rem'
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 128)}px`
+    }
+
+    // Small delay to ensure proper rendering
+    setTimeout(adjustHeight, 0)
+  }, []) // Run once after mount
+
   // Run resize when component opens
   useEffect(() => {
     if (isOpen && textareaRef.current) {

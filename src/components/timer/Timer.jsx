@@ -55,7 +55,7 @@ export function Timer({ isPip }) {
               )
               
               // If completing a focus round, show notes dialog
-              if (!isBreak && (t >= duration * 0.75 || t >= 900)) {
+              if (!isBreak && (t >= duration * 0.5 || t >= 900)) {
                 useTimerStore.getState().nextRound().then(roundId => {
                   if (roundId) {
                     setCurrentRoundId(roundId)
@@ -111,8 +111,11 @@ export function Timer({ isPip }) {
 
   useEffect(() => {
     if (progressRef.current) {
-      const progress = (elapsed_time / duration) * 100
-      progressRef.current.style.strokeDashoffset = progress
+      const circumference = 2 * Math.PI * 54
+      // Set the total length of the dash and gap to be the circumference
+      progressRef.current.style.strokeDasharray = `${circumference}`
+      // Offset starts at 0 (full ring) and increases to circumference (empty ring)
+      progressRef.current.style.strokeDashoffset = `${(elapsed_time / duration) * circumference}`
     }
   }, [elapsed_time, duration])
 
@@ -133,7 +136,7 @@ export function Timer({ isPip }) {
             cx="60" 
             cy="60" 
             r="54"
-            pathLength="100" 
+            transform="rotate(-90 60 60)"
           />
         </svg>
 

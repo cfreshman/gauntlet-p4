@@ -40,13 +40,12 @@
 }
 
 #progress {
-  stroke: var(--coloraccent);
-  stroke-width: 8;
   fill: none;
+  stroke-width: 8;
   transform: rotate(-90deg);
   transform-origin: 50% 50%;
-  stroke-dasharray: 100;
-  stroke-dashoffset: 0;
+  transition: none;
+  will-change: stroke-dashoffset;
 }
 
 .t-focus #progress {

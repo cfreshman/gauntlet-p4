@@ -7,6 +7,7 @@ import { supabase } from '../../supabase-client'
 
 export function SessionPlanner() {
   const [timeBlock, setTimeBlock] = useState(120) // Default 2 hours
+  const [goals, setGoals] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [suggestedPlan, setSuggestedPlan] = useState(null)
   const [error, setError] = useState(null)
@@ -40,6 +41,7 @@ export function SessionPlanner() {
       const taskData = {
         task: tasks.find(t => t.id === selectedTaskId),
         timeBlockMinutes: timeBlock,
+        goals,
         sessions: sessionPatterns.map(session => ({
           pattern: session.pattern,
           goals: session.goals,
@@ -88,15 +90,21 @@ export function SessionPlanner() {
       .map(cycle => `${cycle.focus}-${cycle.break}`)
       .join('-')
     
-    await useTimerStore.getState().startNewSession(pattern)
+    await useTimerStore.getState().startNewSession(pattern, goals)
     closeDialog()
   }
 
   function closeDialog() {
     setSuggestedPlan(null)
     setTimeBlock(120)
+    setGoals('')
     setShowExplanation(false)
     document.getElementById('sessionplanner').close()
+  }
+
+  function handleReplan() {
+    setSuggestedPlan(null)
+    setShowExplanation(false)
   }
 
   return (
@@ -104,82 +112,115 @@ export function SessionPlanner() {
       <div className="modal-content">
         <h2>Plan Session</h2>
         
-        <div className="task-select">
-          <h3>Task</h3>
-          <select 
-            value={selectedTaskId || ''}
-            onChange={(e) => useTaskStore.getState().selectTask(e.target.value)}
-          >
-            {tasks.map(task => (
-              <option key={task.id} value={task.id}>{task.name}</option>
-            ))}
-          </select>
-        </div>
+        {!suggestedPlan ? (
+          // Input form when no plan exists
+          <>
+            <div className="task-select">
+              <h3>Task</h3>
+              <select 
+                value={selectedTaskId || ''}
+                onChange={(e) => useTaskStore.getState().selectTask(e.target.value)}
+              >
+                {tasks.map(task => (
+                  <option key={task.id} value={task.id}>{task.name}</option>
+                ))}
+              </select>
+            </div>
 
-        <div className="time-select">
-          <h3>Available Time</h3>
-          <select
-            value={timeBlock}
-            onChange={(e) => setTimeBlock(Number(e.target.value))}
-          >
-            <option value={60}>1 hour</option>
-            <option value={120}>2 hours</option>
-            <option value={180}>3 hours</option>
-            <option value={240}>4 hours</option>
-            <option value={300}>5 hours</option>
-            <option value={360}>6 hours</option>
-            <option value={420}>7 hours</option>
-            <option value={480}>8 hours</option>
-          </select>
-        </div>
+            <div className="time-select">
+              <h3>Available Time</h3>
+              <select
+                value={timeBlock}
+                onChange={(e) => setTimeBlock(Number(e.target.value))}
+              >
+                <option value={60}>1 hour</option>
+                <option value={120}>2 hours</option>
+                <option value={180}>3 hours</option>
+                <option value={240}>4 hours</option>
+                <option value={300}>5 hours</option>
+                <option value={360}>6 hours</option>
+                <option value={420}>7 hours</option>
+                <option value={480}>8 hours</option>
+              </select>
+            </div>
 
-        <button 
-          className="action-button"
-          onClick={handlePlanSession}
-          disabled={isLoading || !selectedTaskId}
-        >
-          {isLoading ? 'Planning...' : 'Plan Session'}
-        </button>
+            <div className="goals-input">
+              <h3>Session Goals</h3>
+              <textarea
+                id="session-goals"
+                placeholder="What do you want to accomplish in this session?"
+                value={goals}
+                onChange={(e) => setGoals(e.target.value)}
+                rows="3"
+              />
+            </div>
+
+            <button 
+              className="action-button"
+              onClick={handlePlanSession}
+              disabled={isLoading || !selectedTaskId}
+            >
+              {isLoading ? 'Planning...' : 'Plan Session'}
+            </button>
+          </>
+        ) : (
+          // Compact read-only view when plan exists
+          <>
+            <div className="plan-inputs">
+              <div className="plan-input-value">
+                {tasks.find(t => t.id === selectedTaskId)?.name} • {timeBlock / 60} hours
+              </div>
+              {goals && (
+                <div className="plan-input-value">{goals}</div>
+              )}
+            </div>
+
+            <button 
+              className="action-button"
+              onClick={handleReplan}
+            >
+              Replan Session
+            </button>
+
+            <div className="suggested-plan">
+              <h3>Suggested Plan</h3>
+              
+              <div className="pattern-grid">
+                <div className="pattern-btn selected">
+                  <h4>AI Recommended Pattern</h4>
+                  <div className="pattern-preview">
+                    {suggestedPlan.cycles.map(cycle => `${cycle.focus}-${cycle.break}`).join('-')}
+                  </div>
+                  <div className="pattern-desc">
+                    Personalized pattern based on your task history and preferences
+                  </div>
+                  <div className="pattern-total">
+                    Total: {suggestedPlan.cycles.reduce((sum, cycle) => sum + cycle.focus + cycle.break, 0)}m
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                className="explanation-toggle"
+                onClick={() => setShowExplanation(!showExplanation)}
+                aria-expanded={showExplanation}
+              >
+                <span className="material-icons-round">
+                  expand_more
+                </span>
+                View AI Explanation
+              </button>
+              
+              <div className={`plan-explanation ${showExplanation ? 'visible' : ''}`}>
+                {suggestedPlan.explanation}
+              </div>
+            </div>
+          </>
+        )}
 
         {error && (
           <div className="error-message">
             {error}
-          </div>
-        )}
-
-        {suggestedPlan && (
-          <div className="suggested-plan">
-            <h3>Suggested Plan</h3>
-            
-            <div className="pattern-grid">
-              <div className="pattern-btn selected">
-                <h4>AI Recommended Pattern</h4>
-                <div className="pattern-preview">
-                  {suggestedPlan.cycles.map(cycle => `${cycle.focus}-${cycle.break}`).join('-')}
-                </div>
-                <div className="pattern-desc">
-                  Personalized pattern based on your task history and preferences
-                </div>
-                <div className="pattern-total">
-                  Total: {suggestedPlan.cycles.reduce((sum, cycle) => sum + cycle.focus + cycle.break, 0)}m
-                </div>
-              </div>
-            </div>
-
-            <button 
-              className="explanation-toggle"
-              onClick={() => setShowExplanation(!showExplanation)}
-              aria-expanded={showExplanation}
-            >
-              <span className="material-icons-round">
-                expand_more
-              </span>
-              View AI Explanation
-            </button>
-            
-            <div className={`plan-explanation ${showExplanation ? 'visible' : ''}`}>
-              {suggestedPlan.explanation}
-            </div>
           </div>
         )}
 

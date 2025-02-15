@@ -6,6 +6,7 @@ export async function planSession(taskData) {
       body: { 
         task: taskData.task.name,
         timeBlockMinutes: taskData.timeBlockMinutes,
+        goals: taskData.goals,
         sessions: taskData.sessions.map(session => ({
           pattern: session.pattern,
           goals: session.goals,

@@ -4,7 +4,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   background-color: var(--bgcolor);
-  padding: 2rem;
+  padding: 1.5rem;
   border-radius: 0.75rem;
   border: none;
   max-width: 37.5rem;
@@ -20,14 +20,13 @@
 
 .task-select,
 .time-select {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .task-select h3,
-.time-select h3 {
-  color: var(--coloraccent);
-  margin-bottom: 0.5rem;
-  font-size: 1rem;
+.time-select h3,
+.goals-input h3 {
+  margin-bottom: 0.25rem;
 }
 
 .task-select select,
@@ -69,7 +68,7 @@
   font-size: 1rem;
   cursor: pointer;
   transition: opacity 0.2s;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .action-button:hover:not(:disabled) {
@@ -91,12 +90,11 @@
 }
 
 .suggested-plan {
-  margin-top: 1.5rem;
+  margin-top: 1rem;
 }
 
 .suggested-plan h3 {
-  color: var(--coloraccent);
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .explanation-toggle {
@@ -110,7 +108,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin: 0.5rem 0;
+  margin: 0.25rem 0;
 }
 
 .explanation-toggle:hover {
@@ -127,12 +125,12 @@
 }
 
 .plan-explanation {
+  margin: 0.25rem 0 0.75rem;
+  padding: 0.75rem;
   font-size: 0.9rem;
   line-height: 1.5;
   opacity: 0.8;
-  margin: 0.5rem 0 1rem;
   display: none;
-  padding: 0.5rem;
   background-color: var(--bgcolor2);
   border-radius: 0.5rem;
 }
@@ -144,14 +142,14 @@
 .pattern-grid {
   display: grid;
   gap: 1rem;
-  margin: 1rem 0;
+  margin: 0.75rem 0;
 }
 
 .pattern-btn {
   background-color: var(--bgcolor2);
   border: 0.125rem solid transparent;
   border-radius: 0.5rem;
-  padding: 1rem;
+  padding: 0.75rem;
   text-align: left;
   cursor: pointer;
   transition: border-color 0.2s;
@@ -166,13 +164,13 @@
 }
 
 .pattern-btn h4 {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
   color: var(--coloraccent);
 }
 
 .pattern-preview {
   font-family: monospace;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .pattern-desc {
@@ -182,7 +180,7 @@
 
 .pattern-total {
   color: var(--coloraccent);
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
   font-size: 0.9rem;
 }
 
@@ -190,7 +188,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-  margin-top: 1.5rem;
+  margin-top: 1rem;
 }
 
 .dialog-buttons button {
@@ -293,4 +291,49 @@
 .action-button:disabled.loading {
   animation: pulse 1.5s infinite;
   opacity: 0.8;
+}
+
+.goals-input {
+  margin: 0.75rem 0;
+}
+
+.goals-input textarea {
+  width: 100%;
+  min-height: 4.5rem;
+  padding: 0.75rem;
+  background-color: var(--bgcolor2);
+  border: 2px solid transparent;
+  border-radius: 0.5rem;
+  color: var(--color);
+  resize: vertical;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  transition: border-color 0.2s;
+}
+
+.goals-input textarea:hover {
+  border-color: var(--coloraccent);
+}
+
+.goals-input textarea:focus {
+  border-color: var(--coloraccent);
+  outline: none;
+}
+
+.plan-inputs {
+  background-color: var(--bgcolor2);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.plan-input-value {
+  opacity: 0.9;
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.plan-input-value:last-child {
+  margin-bottom: 0;
 } 

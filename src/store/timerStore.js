@@ -87,19 +87,32 @@ export const useTimerStore = create((set, get) => ({
 
     console.log('Syncing timer state to Supabase:', timerState)
 
-    try {
-      const { error } = await supabase
-        .from('timer')
-        .upsert({
-          user_id: user.id,
-          ...timerState,
-          updated_at: new Date().toISOString()
-        })
-      
-      if (error) throw error
-    } catch (error) {
-      console.error('Error syncing timer state:', error)
-      window.dispatchEvent(new CustomEvent('sync-error'))
+    let retries = 3
+    while (retries > 0) {
+      try {
+        const { error } = await supabase
+          .from('timer')
+          .upsert({
+            user_id: user.id,
+            ...timerState,
+            updated_at: new Date().toISOString()
+          })
+        
+        if (error) throw error
+        
+        // Sync successful
+        return
+        
+      } catch (error) {
+        console.error(`Error syncing timer state (${retries} retries left):`, error)
+        retries--
+        if (retries === 0) {
+          console.error('Syncing timer state failed')
+        } else {
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        }
+      }
     }
   },
 

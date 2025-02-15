@@ -39,41 +39,43 @@ export function Timer({ isPip }) {
   useEffect(() => {
     let interval
     if (!isPip && is_running && elapsed_time < duration) {
-      interval = setInterval(() => {
-        useTimerStore.getState().setElapsedTime(t => {
-          if (t >= duration) {
-            console.log('Timer completed:', { elapsed_time: t, duration })
-            clearInterval(interval)
-            useTimerStore.getState().setIsRunning(false)
-            
-            // Send notification when round completes
-            const roundType = isBreak ? (isLongBreak ? 'Long Break' : 'Short Break') : 'Focus'
-            console.log('Sending round completion notification:', { roundType, isBreak, isLongBreak })
-            notify(
-              `${roundType} Round Complete`,
-              isBreak ? 'Time to focus!' : 'Time for a break!'
-            )
-            
-            // If completing a focus round, show notes dialog
-            if (!isBreak && (t >= duration * 0.75 || t >= 900)) {
-              console.log('Focus round completed, showing notes dialog')
-              useTimerStore.getState().nextRound().then(roundId => {
-                console.log('Round completed, got roundId:', roundId)
-                if (roundId) {
-                  setCurrentRoundId(roundId)
-                  setShowNotesDialog(true)
-                } else {
-                  useTimerStore.getState().nextRound()
-                }
-              })
-            } else {
-              console.log('Break round completed, moving to next round')
-              useTimerStore.getState().nextRound()
+      interval = setInterval(async () => {
+        try {
+          await useTimerStore.getState().setElapsedTime(t => {
+            if (t >= duration) {
+              console.log('Timer completed:', { elapsed_time: t, duration })
+              clearInterval(interval)
+              useTimerStore.getState().setIsRunning(false)
+              
+              // Send notification when round completes
+              const roundType = isBreak ? (isLongBreak ? 'Long Break' : 'Short Break') : 'Focus'
+              notify(
+                `${roundType} Round Complete`,
+                isBreak ? 'Time to focus!' : 'Time for a break!'
+              )
+              
+              // If completing a focus round, show notes dialog
+              if (!isBreak && (t >= duration * 0.75 || t >= 900)) {
+                useTimerStore.getState().nextRound().then(roundId => {
+                  if (roundId) {
+                    setCurrentRoundId(roundId)
+                    setShowNotesDialog(true)
+                  } else {
+                    useTimerStore.getState().nextRound()
+                  }
+                })
+              } else {
+                useTimerStore.getState().nextRound()
+              }
+              return t
             }
-            return t
-          }
-          return t + 1
-        })
+            return t + 1
+          })
+        } catch (error) {
+          console.error('Error updating timer:', error)
+          // Try to reload timer state on error
+          await useTimerStore.getState().loadTimerState()
+        }
       }, 1000)
     }
     return () => clearInterval(interval)

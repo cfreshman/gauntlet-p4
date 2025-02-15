@@ -176,7 +176,7 @@ select, input, textarea {
 	border: 2px solid transparent;
 	border-radius: 8px;
 	color: var(--color);
-	font-size: 1rem;
+	font-size: max(16px, 1em) !important;
 	transition: border-color 0.2s;
 }
 

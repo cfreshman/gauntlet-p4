@@ -12,7 +12,7 @@ fi
 set +a
 
 # Check if environment variables are set
-if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ] || [ -z "$OPENAI_API_KEY" ]; then
+if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ] || [ -z "$OPENAI_API_KEY" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
     echo "Error: Missing required environment variables"
     exit 1
 fi
@@ -22,13 +22,17 @@ PROJECT_REF=$(echo $VITE_SUPABASE_URL | awk -F'.' '{print $1}' | awk -F'//' '{pr
 
 echo "Deploying Edge Functions for ${NODE_ENV:-development}..."
 
-# Deploy function directly to project
+# Deploy functions
 echo "Deploying functions..."
+supabase functions deploy ai-companion --project-ref $PROJECT_REF
 supabase functions deploy plan-session --project-ref $PROJECT_REF
 
-# Set OpenAI key as secret
-echo "Setting OpenAI API key..."
-supabase secrets set --project-ref $PROJECT_REF OPENAI_API_KEY=$OPENAI_API_KEY
+# Set secrets
+echo "Setting secrets..."
+supabase secrets set --project-ref $PROJECT_REF \
+  OPENAI_API_KEY=$OPENAI_API_KEY \
+  SUPABASE_URL=$VITE_SUPABASE_URL \
+  SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
 
 # Cleanup
 rm supabase/config.toml

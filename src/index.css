@@ -12,6 +12,7 @@
 @import url('./components/common/SyncIndicator.css');
 @import url('./components/common/FirstLoad.css');
 @import url('./components/statistics/HeatmapCalendar.css');
+@import url('./components/ai/AICompanion.css');
 @import url('./auth/auth-ui.css');
 
 * {

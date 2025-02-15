@@ -5,6 +5,7 @@ import { useTaskStore } from '../../store/taskStore'
 import { IconButton } from '../common/IconButton'
 import { Menu } from '../menu/Menu'
 import { Timer } from '../timer/Timer'
+import { AICompanion } from '../ai/AICompanion'
 
 export function TopNav() {
   const tasks = useTaskStore(state => state.tasks)
@@ -183,6 +184,14 @@ export function TopNav() {
           icon="menu"
           className="nav-button"
           onClick={Menu.open}
+        />
+
+        <IconButton
+          id="aibtn"
+          title="AI Companion"
+          icon="auto_awesome"
+          className="nav-button"
+          onClick={AICompanion.open}
         />
 
         <IconButton

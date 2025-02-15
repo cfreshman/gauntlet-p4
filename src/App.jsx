@@ -11,6 +11,7 @@ import { CurrentSession } from './components/session/CurrentSession'
 import { SessionPlanner } from './components/session/SessionPlanner'
 import { SyncIndicator } from './components/common/SyncIndicator'
 import { FirstLoad } from './components/common/FirstLoad'
+import { AICompanion } from './components/ai/AICompanion'
 import { useThemeStore } from './store/themeStore'
 import { useNotificationStore } from './store/notificationStore'
 import { useTaskStore } from './store/taskStore'
@@ -133,6 +134,7 @@ export function App() {
       <TaskManager />
       <NewSessionDialog />
       <SessionPlanner />
+      <AICompanion />
       <SyncIndicator />
     </>
   )

@@ -1,11 +1,12 @@
 -- Drop ALL existing tables and objects
 drop table if exists daily_sessions cascade;
 drop table if exists timer_states cascade;
-drop table if exists tasks cascade;
-drop table if exists pomodoro_sessions cascade;
 drop table if exists rounds cascade;
-drop table if exists sessions cascade;
 drop table if exists timer cascade;
+drop table if exists ai_chats cascade;
+drop table if exists pomodoro_sessions cascade;
+drop table if exists sessions cascade;
+drop table if exists tasks cascade;
 
 -- Drop auth data
 delete from auth.users;
@@ -116,4 +117,29 @@ create policy "Users can insert own timer"
   on timer for insert with check (auth.uid() = user_id);
 
 -- Enable realtime for timer
-alter publication supabase_realtime add table public.timer; 
+alter publication supabase_realtime add table public.timer;
+
+-- Create ai_chats table (conversation history)
+create table ai_chats (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id),
+  role text not null check (role in ('user', 'assistant')),
+  content text not null,
+  created_at timestamp with time zone default now()
+);
+
+create index ai_chats_user_time_idx on ai_chats(user_id, created_at);
+
+alter table ai_chats enable row level security;
+
+create policy "Users can view own chat history"
+  on ai_chats for select using (auth.uid() = user_id);
+
+create policy "Users can insert own messages"
+  on ai_chats for insert with check (auth.uid() = user_id);
+
+create policy "Users can delete own messages"
+  on ai_chats for delete using (auth.uid() = user_id);
+
+-- Enable realtime for ai_chats
+alter publication supabase_realtime add table public.ai_chats; 

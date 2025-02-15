@@ -16,6 +16,7 @@ export function Timer({ isPip }) {
   const [sessionNotes, setSessionNotes] = useState('')
   const [currentRoundId, setCurrentRoundId] = useState(null)
   const notesDialogRef = useRef(null)
+  const lastTickRef = useRef(Date.now())
   
   // Get current round duration from pattern
   const rounds = currentSession?.pattern.split('-').map(Number) || [25]
@@ -35,6 +36,63 @@ export function Timer({ isPip }) {
       notesDialogRef.current?.close()
     }
   }, [showNotesDialog])
+
+  // Handle visibility changes and reconnection
+  useEffect(() => {
+    if (isPip) return // Don't handle recovery in PiP windows
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Tab became visible, checking timer state')
+        try {
+          // Always reload timer state when becoming visible
+          await useTimerStore.getState().loadTimerState()
+          
+          // Only catch up on missed time if timer was running
+          const now = Date.now()
+          const missedMs = now - lastTickRef.current
+          const missedSeconds = Math.floor(missedMs / 1000)
+          
+          if (missedSeconds > 0 && is_running) {
+            console.log('Catching up missed time while hidden:', missedSeconds, 'seconds')
+            await useTimerStore.getState().setElapsedTime(t => {
+              const newTime = Math.min(t + missedSeconds, duration)
+              // If we've passed the duration while hidden, handle completion
+              if (newTime >= duration) {
+                useTimerStore.getState().setIsRunning(false)
+                const roundType = isBreak ? (isLongBreak ? 'Long Break' : 'Short Break') : 'Focus'
+                notify(
+                  `${roundType} Round Complete`,
+                  isBreak ? 'Time to focus!' : 'Time for a break!'
+                )
+                if (!isBreak && newTime >= 60 && (newTime >= 600 || newTime >= duration * 0.5)) {
+                  useTimerStore.getState().nextRound().then(roundId => {
+                    if (roundId) {
+                      setCurrentRoundId(roundId)
+                      setShowNotesDialog(true)
+                    } else {
+                      useTimerStore.getState().nextRound()
+                    }
+                  })
+                } else {
+                  useTimerStore.getState().nextRound()
+                }
+              }
+              return newTime
+            })
+          }
+        } catch (error) {
+          console.error('Error recovering timer state:', error)
+        }
+      }
+    }
+
+    // Update last tick time whenever elapsed_time changes
+    lastTickRef.current = Date.now()
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [duration, elapsed_time, is_running, isBreak, isLongBreak, isPip, notify])
 
   useEffect(() => {
     let interval

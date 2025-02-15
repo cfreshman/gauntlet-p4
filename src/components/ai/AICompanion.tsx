@@ -46,6 +46,17 @@ export function AICompanion() {
         }
         return prev
       })
+      
+      // Resize textarea after header data loads
+      if (textareaRef.current) {
+        setTimeout(() => {
+          const textarea = textareaRef.current
+          if (textarea) {
+            textarea.style.height = '1.5rem'
+            textarea.style.height = `${Math.min(textarea.scrollHeight, 128)}px`
+          }
+        }, 0)
+      }
     }
   }, [headerData])
 

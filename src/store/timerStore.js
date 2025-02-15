@@ -14,7 +14,7 @@ export const useTimerStore = create((set, get) => ({
   timerState: { ...initialTimerState },
   currentSession: null,
 
-  loadTimerState: async () => {
+  loadTimerState: async (preserveRunning) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
@@ -44,7 +44,7 @@ export const useTimerStore = create((set, get) => ({
       set({
         timerState: {
           elapsed_time: timer.elapsed_time || 0,
-          is_running: false, // Always start paused on load
+          is_running: preserveRunning !== undefined ? preserveRunning : false, // Use preserved state if provided
           current_session_id: timer.current_session_id,
           current_task_id: timer.current_task_id,
           pattern_position: timer.pattern_position || 0

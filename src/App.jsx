@@ -44,13 +44,13 @@ export function App() {
               const { elapsed_time, is_running, pattern_position, current_session_id, current_task_id } = payload.new
               const timerState = useTimerStore.getState().timerState
               
-              // Only update if the state is different
-              if (timerState.elapsed_time !== elapsed_time ||
-                  timerState.is_running !== is_running ||
-                  timerState.pattern_position !== pattern_position ||
-                  timerState.current_session_id !== current_session_id ||
-                  timerState.current_task_id !== current_task_id) {
-                await loadTimerState()
+              // Don't reload if only elapsed_time changed
+              if (is_running !== timerState.is_running ||
+                  pattern_position !== timerState.pattern_position ||
+                  current_session_id !== timerState.current_session_id ||
+                  current_task_id !== timerState.current_task_id) {
+                // Preserve running state when reloading
+                await useTimerStore.getState().loadTimerState(is_running)
               }
             }
           })

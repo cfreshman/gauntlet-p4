@@ -96,43 +96,74 @@ export function Timer({ isPip }) {
 
   useEffect(() => {
     let interval
+    let lastSyncTime = Date.now()
+    let syncInProgress = false
+    let pendingSync = false
+
     if (!isPip && is_running && elapsed_time < duration) {
       interval = setInterval(async () => {
-        try {
-          await useTimerStore.getState().setElapsedTime(t => {
-            if (t >= duration) {
-              console.log('Timer completed:', { elapsed_time: t, duration })
-              clearInterval(interval)
-              useTimerStore.getState().setIsRunning(false)
-              
-              // Send notification when round completes
-              const roundType = isBreak ? (isLongBreak ? 'Long Break' : 'Short Break') : 'Focus'
-              notify(
-                `${roundType} Round Complete`,
-                isBreak ? 'Time to focus!' : 'Time for a break!'
-              )
-              
-              // If completing a focus round, show notes dialog
-              if (!isBreak && t >= 60 && (t >= 600 || t >= duration * 0.5)) {
-                useTimerStore.getState().nextRound().then(roundId => {
-                  if (roundId) {
-                    setCurrentRoundId(roundId)
-                    setShowNotesDialog(true)
-                  } else {
-                    useTimerStore.getState().nextRound()
-                  }
-                })
-              } else {
-                useTimerStore.getState().nextRound()
-              }
-              return t
+        const store = useTimerStore.getState()
+        
+        // Always increment local time first
+        store.setElapsedTime(t => {
+          if (t >= duration) {
+            console.log('Timer completed:', { elapsed_time: t, duration })
+            clearInterval(interval)
+            store.setIsRunning(false)
+            
+            // Send notification when round completes
+            const roundType = isBreak ? (isLongBreak ? 'Long Break' : 'Short Break') : 'Focus'
+            notify(
+              `${roundType} Round Complete`,
+              isBreak ? 'Time to focus!' : 'Time for a break!'
+            )
+            
+            // If completing a focus round, show notes dialog
+            if (!isBreak && t >= 60 && (t >= 600 || t >= duration * 0.5)) {
+              store.nextRound().then(roundId => {
+                if (roundId) {
+                  setCurrentRoundId(roundId)
+                  setShowNotesDialog(true)
+                } else {
+                  store.nextRound()
+                }
+              })
+            } else {
+              store.nextRound()
             }
-            return t + 1
-          })
-        } catch (error) {
-          console.error('Error updating timer:', error)
-          // Try to reload timer state on error
-          await useTimerStore.getState().loadTimerState()
+            return t
+          }
+          return t + 1
+        }, false) // Pass false to skip auto-sync
+
+        // Attempt cloud sync if not in progress
+        if (!syncInProgress) {
+          try {
+            syncInProgress = true
+            await store.syncTimerState()
+            lastSyncTime = Date.now()
+            syncInProgress = false
+            pendingSync = false
+          } catch (error) {
+            console.error('Error syncing timer:', error)
+            syncInProgress = false
+            pendingSync = true
+          }
+        } else {
+          pendingSync = true
+        }
+
+        // If we've missed too many syncs, try to recover but don't stop the timer
+        const timeSinceLastSync = Date.now() - lastSyncTime
+        if (timeSinceLastSync > 10000 && pendingSync) { // 10 seconds
+          console.log('Timer sync delayed, attempting recovery...')
+          try {
+            await store.loadTimerState(true) // Preserve running state
+            lastSyncTime = Date.now()
+            pendingSync = false
+          } catch (error) {
+            console.error('Error recovering timer state:', error)
+          }
         }
       }, 1000)
     }

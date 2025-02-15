@@ -111,6 +111,7 @@ Example response with both types:
 ]
 
 If they ask you to suggest a new session (or something similar) or that they'd like to get certain work done, you should respond with a session suggestion.
+If they didn't provide a clear goal, first ask for a goal, THEN respond with a session suggestion.
 
 
 User Message: ${message}

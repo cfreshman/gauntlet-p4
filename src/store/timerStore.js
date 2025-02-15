@@ -101,13 +101,15 @@ export const useTimerStore = create((set, get) => ({
         if (error) throw error
         
         // Sync successful
-        return
+        console.log('Timer sync successful')
+        return true
         
       } catch (error) {
         console.error(`Error syncing timer state (${retries} retries left):`, error)
         retries--
         if (retries === 0) {
-          console.error('Syncing timer state failed')
+          console.error('Failed to sync timer state after all retries')
+          return false
         } else {
           // Wait before retrying
           await new Promise(resolve => setTimeout(resolve, 1000))
@@ -116,19 +118,23 @@ export const useTimerStore = create((set, get) => ({
     }
   },
 
-  setElapsedTime: (time) => {
+  setElapsedTime: async (time, shouldSync = true) => {
     const newTime = typeof time === 'function' ? time(get().timerState.elapsed_time) : time
     set(state => ({
       timerState: { ...state.timerState, elapsed_time: newTime }
     }))
-    get().syncTimerState()
+    if (shouldSync) {
+      return await get().syncTimerState()
+    }
   },
 
-  setIsRunning: (isRunning) => {
+  setIsRunning: async (isRunning, shouldSync = true) => {
     set(state => ({
       timerState: { ...state.timerState, is_running: isRunning }
     }))
-    get().syncTimerState()
+    if (shouldSync) {
+      return await get().syncTimerState()
+    }
   },
 
   setCurrentTask: (taskId) => {

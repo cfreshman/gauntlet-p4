@@ -1,24 +1,25 @@
 import { useState, useEffect } from 'react'
 import { useTimerStore } from '../../store/timerStore'
 
-export function SessionList({ sessions, onDelete, searchResults }) {
+export function SessionList({ sessions = [], onDelete, searchResults }) {
   const [expandedSessions, setExpandedSessions] = useState(new Set())
   const { timerState } = useTimerStore()
 
   // Debug log
   console.log('SessionList render:', {
     searchMode: !!searchResults,
-    sessions: sessions.map(s => ({
+    sessionsLength: sessions?.length || 0,
+    sessions: sessions?.map(s => ({
       id: s.id,
       match_type: s.match_type,
       has_rounds: s.rounds?.length > 0,
       has_matching_rounds: s.matching_rounds?.length > 0
-    }))
+    })) || []
   })
 
   // Auto-expand sessions with matching rounds
   useEffect(() => {
-    if (searchResults) {
+    if (searchResults && Array.isArray(sessions) && sessions.length > 0) {
       setExpandedSessions(new Set(
         sessions
           .filter(session => 
@@ -80,7 +81,7 @@ export function SessionList({ sessions, onDelete, searchResults }) {
 
   return (
     <div className="sessions">
-      {sessions.map(session => (
+      {sessions?.map(session => (
         <div 
           key={session.id} 
           className={`session ${searchResults ? 'search-result' : ''} ${

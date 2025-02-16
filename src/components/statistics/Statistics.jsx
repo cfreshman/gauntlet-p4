@@ -48,7 +48,12 @@ export function Statistics() {
           const display = statsEl.style.display
           setIsOpen(display === 'flex')
           if (display === 'flex') {
-            fetchStats() // Refresh stats when opened
+            // Clear ALL search state when reopening
+            setSearchQuery('')
+            setSearchResults(null)
+            setIsSearching(false)
+            setSessions([])
+            fetchStats()
           }
         }
       })
@@ -59,10 +64,10 @@ export function Statistics() {
   }, [])
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !searchResults) {
       fetchStats()
     }
-  }, [selectedPeriod, selectedTasks])
+  }, [selectedPeriod, selectedTasks, isOpen])
 
   async function fetchStats() {
     // Calculate date range

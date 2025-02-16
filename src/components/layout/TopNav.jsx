@@ -109,41 +109,62 @@ export function TopNav() {
 
   const enterPiP = async () => {
     try {
-      // Try Document PiP first
-      if ('documentPictureInPicture' in window) {
-        const pipWindow = await documentPictureInPicture.requestWindow({
-          width: 300,
-          height: 300
-        })
-        pipWindowRef.current = pipWindow
-
-        // Set up the PIP window
-        const container = pipWindow.document.createElement('div')
-        container.style.width = '100%'
-        container.style.height = '100%'
-        container.style.backgroundColor = getComputedStyle(document.body).getPropertyValue('--bgcolor')
-        container.className = 'pip-window'
-        pipWindow.document.body.appendChild(container)
-        
-        // Copy styles
-        const styles = document.querySelectorAll('style, link[rel="stylesheet"]')
-        styles.forEach(style => pipWindow.document.head.appendChild(style.cloneNode(true)))
-        
-        // Create React root and render Timer
-        const root = createRoot(container)
-        pipRootRef.current = root
-        root.render(<Timer isPip={true} />)
-        
-        // Clean up when PiP window closes
-        pipWindow.addEventListener('unload', () => {
-          root.unmount()
-          pipRootRef.current = null
-          pipWindowRef.current = null
-        })
-      } else {
-        // Fall back to standard PiP
+      // Check if running on mobile
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      
+      if (isMobile) {
+        // For mobile, make the video visible and let user trigger PIP through native controls
         if (videoRef.current) {
-          await videoRef.current.requestPictureInPicture()
+          videoRef.current.style.display = 'block'
+          videoRef.current.style.position = 'fixed'
+          videoRef.current.style.top = '0'
+          videoRef.current.style.left = '0'
+          videoRef.current.style.width = '100vw'
+          videoRef.current.style.height = '100vh'
+          videoRef.current.style.objectFit = 'contain'
+          videoRef.current.style.backgroundColor = 'black'
+          videoRef.current.style.zIndex = '10000'
+          
+          // Request fullscreen which can then be minimized to PIP on mobile
+          await videoRef.current.requestFullscreen()
+        }
+      } else {
+        // Desktop implementation
+        if ('documentPictureInPicture' in window) {
+          const pipWindow = await documentPictureInPicture.requestWindow({
+            width: 300,
+            height: 300
+          })
+          pipWindowRef.current = pipWindow
+
+          // Set up the PIP window
+          const container = pipWindow.document.createElement('div')
+          container.style.width = '100%'
+          container.style.height = '100%'
+          container.style.backgroundColor = getComputedStyle(document.body).getPropertyValue('--bgcolor')
+          container.className = 'pip-window'
+          pipWindow.document.body.appendChild(container)
+          
+          // Copy styles
+          const styles = document.querySelectorAll('style, link[rel="stylesheet"]')
+          styles.forEach(style => pipWindow.document.head.appendChild(style.cloneNode(true)))
+          
+          // Create React root and render Timer
+          const root = createRoot(container)
+          pipRootRef.current = root
+          root.render(<Timer isPip={true} />)
+          
+          // Clean up when PiP window closes
+          pipWindow.addEventListener('unload', () => {
+            root.unmount()
+            pipRootRef.current = null
+            pipWindowRef.current = null
+          })
+        } else {
+          // Fall back to standard PiP
+          if (videoRef.current) {
+            await videoRef.current.requestPictureInPicture()
+          }
         }
       }
     } catch (err) {
@@ -204,6 +225,11 @@ export function TopNav() {
               pipWindowRef.current.close()
             } else if (document.pictureInPictureElement) {
               await document.exitPictureInPicture()
+            } else if (videoRef.current && videoRef.current.style.display === 'block') {
+              videoRef.current.style.display = 'none'
+              if (document.fullscreenElement) {
+                await document.exitFullscreen()
+              }
             } else {
               await enterPiP()
             }

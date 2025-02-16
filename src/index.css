@@ -238,3 +238,8 @@ body:not(.authenticated) .auth-container {
 .fonts-loaded .material-icons-round {
 	opacity: 1;
 }  */
+
+input[type="range"].vertical {
+	writing-mode: vertical-lr;
+	direction: rtl;
+}

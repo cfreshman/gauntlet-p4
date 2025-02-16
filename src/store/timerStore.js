@@ -16,43 +16,66 @@ export const useTimerStore = create((set, get) => ({
 
   loadTimerState: async (preserveRunning) => {
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    if (!user) {
+      console.error('No user found when loading timer state')
+      return
+    }
 
-    console.log('Loading timer state from Supabase')
+    console.log('Loading timer state from Supabase for user:', user.id)
 
-    const { data: timer } = await supabase
+    const { data: timer, error } = await supabase
       .from('timer')
       .select(`
         *,
-        current_session:sessions(
+        current_session:sessions!timer_current_session_id_fkey(
+          id,
           pattern,
           goals
+        ),
+        current_task:tasks!timer_current_task_id_fkey(
+          id,
+          name
         )
       `)
       .eq('user_id', user.id)
       .maybeSingle()
+
+    if (error) {
+      console.error('Error loading timer state:', error)
+      return null
+    }
 
     console.log('Loaded timer state:', timer)
 
     if (timer) {
       // Sync task selection with taskStore
       if (timer.current_task_id) {
-        console.log('Syncing task selection from timer:', timer.current_task_id)
+        console.log('Syncing task selection from timer to taskStore:', {
+          task_id: timer.current_task_id,
+          task_name: timer.current_task?.name
+        })
         useTaskStore.getState().selectTask(timer.current_task_id)
+      } else {
+        console.log('No current task in timer state')
       }
 
-      set({
+      const newState = {
         timerState: {
           elapsed_time: timer.elapsed_time || 0,
-          is_running: preserveRunning !== undefined ? preserveRunning : false, // Use preserved state if provided
+          is_running: preserveRunning !== undefined ? preserveRunning : timer.is_running || false,
           current_session_id: timer.current_session_id,
           current_task_id: timer.current_task_id,
           pattern_position: timer.pattern_position || 0
         },
         currentSession: timer.current_session
-      })
+      }
+      
+      console.log('Setting new timer state:', newState)
+      set(newState)
+      
       return timer
     } else {
+      console.log('No existing timer state found, creating initial state')
       // Create initial timer record if it doesn't exist
       try {
         const { data: newTimer, error } = await supabase
@@ -63,7 +86,18 @@ export const useTimerStore = create((set, get) => ({
             is_running: false,
             pattern_position: 0
           })
-          .select()
+          .select(`
+            *,
+            current_session:sessions!timer_current_session_id_fkey(
+              id,
+              pattern,
+              goals
+            ),
+            current_task:tasks!timer_current_task_id_fkey(
+              id,
+              name
+            )
+          `)
           .single()
 
         if (error) {
@@ -71,7 +105,10 @@ export const useTimerStore = create((set, get) => ({
           return null
         }
         
-        set({ timerState: { ...initialTimerState } })
+        set({ 
+          timerState: { ...initialTimerState },
+          currentSession: null
+        })
         return newTimer
       } catch (error) {
         console.error('Error creating timer record:', error)
@@ -137,12 +174,68 @@ export const useTimerStore = create((set, get) => ({
     }
   },
 
-  setCurrentTask: (taskId) => {
+  setCurrentTask: async (taskId) => {
     console.log('Setting current task in timer store:', taskId)
-    set(state => ({
-      timerState: { ...state.timerState, current_task_id: taskId }
-    }))
-    get().syncTimerState()
+    const prevState = get().timerState
+    console.log('Previous timer state:', prevState)
+    
+    // Update local state
+    set(state => {
+      const newState = {
+        timerState: { ...state.timerState, current_task_id: taskId }
+      }
+      console.log('New timer state:', newState)
+      return newState
+    })
+
+    // Sync to Supabase immediately
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      console.error('No user found when updating task')
+      return
+    }
+
+    console.log('Syncing task update to Supabase:', {
+      user_id: user.id,
+      current_task_id: taskId,
+      ...get().timerState
+    })
+
+    const { data, error } = await supabase
+      .from('timer')
+      .upsert({
+        user_id: user.id,
+        current_task_id: taskId,
+        ...get().timerState,
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating task in timer:', error)
+    } else {
+      console.log('Successfully updated task in Supabase:', data)
+      
+      // Verify the update was successful
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('timer')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+        
+      if (verifyError) {
+        console.error('Error verifying task update:', verifyError)
+      } else {
+        console.log('Verified timer state in Supabase:', verifyData)
+        if (verifyData.current_task_id !== taskId) {
+          console.error('Task update verification failed: Supabase has different task ID', {
+            expected: taskId,
+            actual: verifyData.current_task_id
+          })
+        }
+      }
+    }
   },
 
   startNewSession: async (pattern, goals) => {

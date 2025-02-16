@@ -21,7 +21,7 @@ serve(async (req) => {
 
     // If message is 'header', generate header analysis
     if (message === 'header') {
-      const headerPrompt = `You are an AI productivity assistant. Look at their Pomodoro history and help them work better.
+      const headerPrompt = `You are an AI productivity assistant. BE CONCISE. Look at their Pomodoro history and help them work better.
 
 Return response as JSON:
 {
@@ -39,7 +39,7 @@ ${sessions.slice(0, 50).map(session => `
 Pattern: ${session.pattern}
 Goals: ${session.goals}
 Rounds:
-${session.rounds.map(round => `- ${round.duration}min: ${round.notes || 'No notes'}`).join('\n')}`
+${session.rounds.map(round => `- ${Math.round(round.duration / 60)}min: ${round.notes || 'No notes'}`).join('\n')}`
 ).join('\n\n')}`
 
       const completion = await openai.chat.completions.create({
@@ -78,7 +78,7 @@ ${session.rounds.map(round => `- ${round.duration}min: ${round.notes || 'No note
     }
 
     // Handle chat messages
-    const chatPrompt = `You are an AI productivity assistant. Help them use the Pomodoro technique effectively.
+    const chatPrompt = `You are an AI productivity assistant. BE CONCISE.
 
 Return response as JSON array. You can include one or both types of messages:
 
@@ -88,7 +88,7 @@ Return response as JSON array. You can include one or both types of messages:
   "content": "your response"
 }
 
-2. Session suggestion (optional, include if suggesting a specific work pattern):
+2. Session suggestion
 {
   "type": "session",
   "content": "explain why you're suggesting this pattern",
@@ -112,7 +112,9 @@ Example response with both types:
 
 If they ask you to suggest a new session (or something similar) or that they'd like to get certain work done, you should respond with a session suggestion.
 If they didn't provide a clear goal, first ask for a goal, THEN respond with a session suggestion.
-
+YOUR GOAL IS TO RETURN A SESSION RESPONSE ONCE YOU HAVE ENOUGH DETAIL.
+DO NOT MAKE STUFF UP. if the user provided a goal, do not elaborate on it.
+besides that, respond intuitively considering all of the following info on the user:
 
 User Message: ${message}
 
@@ -123,7 +125,7 @@ ${sessions.slice(0, 50).map(session => `
 Pattern: ${session.pattern}
 Goals: ${session.goals}
 Rounds:
-${session.rounds.map(round => `- ${round.duration}min: ${round.notes || 'No notes'}`).join('\n')}`
+${session.rounds.map(round => `- ${Math.round(round.duration / 60)}min: ${round.notes || 'No notes'}`).join('\n')}`
 ).join('\n\n')}`
 
     const completion = await openai.chat.completions.create({

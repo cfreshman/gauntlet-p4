@@ -5,6 +5,43 @@ import { useTaskStore } from '../../store/taskStore'
 import { useNotificationStore } from '../../store/notificationStore'
 import { supabase } from '../../supabase-client'
 
+// Create worker
+const worker = new Worker('/timer.worker.js', { type: 'module' })
+
+// Initialize worker with env vars and auth session
+worker.postMessage({
+  type: 'INIT',
+  payload: {
+    supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+    supabaseKey: import.meta.env.VITE_SUPABASE_ANON_KEY
+  }
+})
+
+supabase.auth.getSession().then(({ data: { session }}) => {
+  if (session) {
+    supabase.auth.getUser().then(({ data: { user }}) => {
+      if (user) {
+        worker.postMessage({
+          type: 'AUTH',
+          payload: {
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+            user
+          }
+        })
+      }
+    })
+  }
+})
+
+// Handle worker messages
+worker.onmessage = (e) => {
+  const { type, elapsed_time } = e.data
+  if (type === 'TICK') {
+    useTimerStore.getState().setElapsedTime(elapsed_time, false) // Don't sync back to Supabase
+  }
+}
+
 export function Timer({ isPip }) {
   const { timerState, currentSession } = useTimerStore()
   const { elapsed_time, is_running, pattern_position } = timerState
@@ -16,8 +53,7 @@ export function Timer({ isPip }) {
   const [sessionNotes, setSessionNotes] = useState('')
   const [currentRoundId, setCurrentRoundId] = useState(null)
   const notesDialogRef = useRef(null)
-  const lastTickRef = useRef(Date.now())
-  
+
   // Get current round duration from pattern
   const rounds = currentSession?.pattern.split('-').map(Number) || [25]
   const duration = (rounds[pattern_position] || 25) * 60
@@ -37,155 +73,136 @@ export function Timer({ isPip }) {
     }
   }, [showNotesDialog])
 
-  // Handle visibility changes and reconnection
+  // Effect to handle timer state changes
   useEffect(() => {
-    if (isPip) return // Don't handle recovery in PiP windows
-
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        console.log('Tab became visible, checking timer state')
-        try {
-          // Always reload timer state when becoming visible
-          await useTimerStore.getState().loadTimerState()
-          
-          // Only catch up on missed time if timer was running
-          const now = Date.now()
-          const missedMs = now - lastTickRef.current
-          const missedSeconds = Math.floor(missedMs / 1000)
-          
-          if (missedSeconds > 0 && is_running) {
-            console.log('Catching up missed time while hidden:', missedSeconds, 'seconds')
-            await useTimerStore.getState().setElapsedTime(t => {
-              const newTime = Math.min(t + missedSeconds, duration)
-              // If we've passed the duration while hidden, handle completion
-              if (newTime >= duration) {
-                useTimerStore.getState().setIsRunning(false)
-                const roundType = isBreak ? (isLongBreak ? 'Long Break' : 'Short Break') : 'Focus'
-                notify(
-                  `${roundType} Round Complete`,
-                  isBreak ? 'Time to focus!' : 'Time for a break!'
-                )
-                if (!isBreak && newTime >= 60 && (newTime >= 600 || newTime >= duration * 0.5)) {
-                  useTimerStore.getState().nextRound().then(roundId => {
-                    if (roundId) {
-                      setCurrentRoundId(roundId)
-                      setShowNotesDialog(true)
-                    } else {
-                      useTimerStore.getState().nextRound()
-                    }
-                  })
-                } else {
-                  useTimerStore.getState().nextRound()
-                }
-              }
-              return newTime
-            })
+    if (is_running) {
+      if (elapsed_time >= duration) {
+        // Stop worker with current state
+        worker.postMessage({
+          type: 'STOP',
+          payload: {
+            elapsed_time,
+            current_session_id: currentSession?.id,
+            current_task_id: timerState.current_task_id,
+            pattern_position
           }
-        } catch (error) {
-          console.error('Error recovering timer state:', error)
+        })
+
+        // Handle round completion
+        const roundType = isBreak ? (isLongBreak ? 'Long Break' : 'Short Break') : 'Focus'
+        notify(
+          `${roundType} Round Complete`,
+          isBreak ? 'Time to focus!' : 'Time for a break!'
+        )
+        
+        if (!isBreak && elapsed_time >= 60 && (elapsed_time >= 600 || elapsed_time >= duration * 0.5)) {
+          useTimerStore.getState().nextRound().then(roundId => {
+            if (roundId) {
+              setCurrentRoundId(roundId)
+              setShowNotesDialog(true)
+            } else {
+              useTimerStore.getState().nextRound()
+            }
+          })
+        } else {
+          useTimerStore.getState().nextRound()
+        }
+      } else {
+        // Start worker
+        worker.postMessage({
+          type: 'START',
+          payload: {
+            elapsed_time,
+            current_session_id: currentSession?.id,
+            current_task_id: timerState.current_task_id,
+            pattern_position,
+            duration
+          }
+        })
+      }
+    } else {
+      // Stop worker with current state
+      worker.postMessage({
+        type: 'STOP',
+        payload: {
+          elapsed_time,
+          current_session_id: currentSession?.id,
+          current_task_id: timerState.current_task_id,
+          pattern_position
+        }
+      })
+    }
+
+    // Cleanup worker on unmount
+    return () => {
+      worker.postMessage({ type: 'STOP' })
+    }
+  }, [is_running, elapsed_time, duration, currentSession?.id, pattern_position, timerState.current_task_id])
+
+  // Effect to load initial state when visibility changes
+  useEffect(() => {
+    async function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        const timer = await useTimerStore.getState().loadTimerState(true)
+        if (timer?.is_running) {
+          // Get current round duration from pattern
+          const pattern = timer.current_session?.pattern || '25'
+          const rounds = pattern.split('-').map(Number)
+          const duration = (rounds[timer.pattern_position] || 25) * 60
+
+          worker.postMessage({
+            type: 'START',
+            payload: {
+              elapsed_time: timer.elapsed_time,
+              current_session_id: timer.current_session_id,
+              current_task_id: timer.current_task_id,
+              pattern_position: timer.pattern_position,
+              duration
+            }
+          })
         }
       }
     }
-
-    // Update last tick time whenever elapsed_time changes
-    lastTickRef.current = Date.now()
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [duration, elapsed_time, is_running, isBreak, isLongBreak, isPip, notify])
-
-  useEffect(() => {
-    let interval
-    let lastSyncTime = Date.now()
-    let syncInProgress = false
-    let pendingSync = false
-
-    if (!isPip && is_running && elapsed_time < duration) {
-      interval = setInterval(async () => {
-        const store = useTimerStore.getState()
-        
-        // Always increment local time first
-        store.setElapsedTime(t => {
-          if (t >= duration) {
-            console.log('Timer completed:', { elapsed_time: t, duration })
-            clearInterval(interval)
-            store.setIsRunning(false)
-            
-            // Send notification when round completes
-            const roundType = isBreak ? (isLongBreak ? 'Long Break' : 'Short Break') : 'Focus'
-            notify(
-              `${roundType} Round Complete`,
-              isBreak ? 'Time to focus!' : 'Time for a break!'
-            )
-            
-            // If completing a focus round, show notes dialog
-            if (!isBreak && t >= 60 && (t >= 600 || t >= duration * 0.5)) {
-              store.nextRound().then(roundId => {
-                if (roundId) {
-                  setCurrentRoundId(roundId)
-                  setShowNotesDialog(true)
-                } else {
-                  store.nextRound()
-                }
-              })
-            } else {
-              store.nextRound()
-            }
-            return t
-          }
-          return t + 1
-        }, false) // Pass false to skip auto-sync
-
-        // Attempt cloud sync if not in progress
-        if (!syncInProgress) {
-          try {
-            syncInProgress = true
-            await store.syncTimerState()
-            lastSyncTime = Date.now()
-            syncInProgress = false
-            pendingSync = false
-          } catch (error) {
-            console.error('Error syncing timer:', error)
-            syncInProgress = false
-            pendingSync = true
-          }
-        } else {
-          pendingSync = true
-        }
-
-        // If we've missed too many syncs, try to recover but don't stop the timer
-        const timeSinceLastSync = Date.now() - lastSyncTime
-        if (timeSinceLastSync > 10000 && pendingSync) { // 10 seconds
-          console.log('Timer sync delayed, attempting recovery...')
-          try {
-            await store.loadTimerState(true) // Preserve running state
-            lastSyncTime = Date.now()
-            pendingSync = false
-          } catch (error) {
-            console.error('Error recovering timer state:', error)
-          }
-        }
-      }, 1000)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-    return () => clearInterval(interval)
-  }, [is_running, duration, isPip, isBreak, isLongBreak, notify])
+  }, [])
 
-  // Handle notes submission
-  const handleNotesSubmit = async (save) => {
-    if (save && currentRoundId && sessionNotes) {
-      try {
-        await supabase
-          .from('rounds')
-          .update({ notes: sessionNotes })
-          .eq('id', currentRoundId)
-      } catch (error) {
-        console.error('Error updating round notes:', error)
+  // Effect to sync task changes
+  useEffect(() => {
+    if (timerState.current_task_id !== undefined) {
+      useTaskStore.getState().selectTask(timerState.current_task_id)
+    }
+  }, [timerState.current_task_id])
+
+  // Effect to sync session changes
+  useEffect(() => {
+    if (currentSession) {
+      worker.postMessage({
+        type: 'STOP',
+        payload: {
+          elapsed_time,
+          current_session_id: currentSession.id,
+          current_task_id: timerState.current_task_id,
+          pattern_position
+        }
+      })
+      if (is_running) {
+        worker.postMessage({
+          type: 'START',
+          payload: {
+            elapsed_time,
+            current_session_id: currentSession.id,
+            current_task_id: timerState.current_task_id,
+            pattern_position,
+            duration
+          }
+        })
       }
     }
-    setSessionNotes('')
-    setShowNotesDialog(false)
-    setCurrentRoundId(null)
-  }
+  }, [currentSession?.id])
 
   // Control noise based on timer state
   useEffect(() => {
@@ -212,6 +229,23 @@ export function Timer({ isPip }) {
     const minutes = Math.floor((duration - seconds) / 60)
     const remainingSeconds = (duration - seconds) % 60
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+  }
+
+  // Handle notes submission
+  const handleNotesSubmit = async (save) => {
+    if (save && currentRoundId && sessionNotes) {
+      try {
+        await supabase
+          .from('rounds')
+          .update({ notes: sessionNotes })
+          .eq('id', currentRoundId)
+      } catch (error) {
+        console.error('Error updating round notes:', error)
+      }
+    }
+    setSessionNotes('')
+    setShowNotesDialog(false)
+    setCurrentRoundId(null)
   }
 
   return (

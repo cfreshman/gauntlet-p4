@@ -116,7 +116,10 @@ export const useTaskStore = create((set, get) => ({
   },
   
   selectTask: (id) => {
+    console.log('Task store: selecting task:', id)
     set({ selectedTaskId: id })
+    // Sync with timer store
+    useTimerStore.getState().setCurrentTask(id)
   },
   
   getSelectedTask: () => {

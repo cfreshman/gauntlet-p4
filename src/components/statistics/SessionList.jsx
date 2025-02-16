@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { deleteSession, deleteRound } from '../../supabase-client'
+import { useTimerStore } from '../../store/timerStore'
 
 export function SessionList({ sessions, onDelete }) {
   const [expandedSessions, setExpandedSessions] = useState(new Set())
+  const { timerState } = useTimerStore()
 
   const toggleSession = (sessionId) => {
     setExpandedSessions(prev => {
@@ -106,12 +108,14 @@ export function SessionList({ sessions, onDelete }) {
               )}
             </>
           ) : (
-            <button 
-              className="action"
-              onClick={(e) => handleDeleteSession(session.id, e)}
-            >
-              <span className="material-icons-round">delete</span>
-            </button>
+            session.id !== timerState.current_session_id && (
+              <button 
+                className="action"
+                onClick={(e) => handleDeleteSession(session.id, e)}
+              >
+                <span className="material-icons-round">delete</span>
+              </button>
+            )
           )}
         </div>
       ))}

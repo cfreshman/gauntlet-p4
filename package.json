@@ -7,11 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "db:push:dev": "NODE_ENV=development supabase db push",
-    "db:push:prod": "NODE_ENV=production supabase db push",
+    "db:dev": "NODE_ENV=development ./scripts/reset-db.sh",
+    "db:prod": "NODE_ENV=production ./scripts/reset-db.sh",
     "db:seed": "node scripts/seed-db.js",
-    "functions:deploy:dev": "NODE_ENV=development bash scripts/deploy-functions.sh",
-    "functions:deploy:prod": "NODE_ENV=production bash scripts/deploy-functions.sh"
+    "functions:dev": "NODE_ENV=development bash scripts/deploy-functions.sh",
+    "functions:prod": "NODE_ENV=production bash scripts/deploy-functions.sh"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

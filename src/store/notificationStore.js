@@ -60,9 +60,6 @@ export const useNotificationStore = create(
             notification.addEventListener('click', () => {
               console.log('Notification clicked, focusing window')
               window.focus()
-              if (document.visibilityState !== 'visible') {
-                window.location.reload() // Ensure app is in foreground state
-              }
               notification.close()
             })
             
@@ -88,9 +85,6 @@ export const useNotificationStore = create(
                 notification.addEventListener('click', () => {
                   console.log('Notification clicked, focusing window')
                   window.focus()
-                  if (document.visibilityState !== 'visible') {
-                    window.location.reload() // Ensure app is in foreground state
-                  }
                   notification.close()
                 })
                 

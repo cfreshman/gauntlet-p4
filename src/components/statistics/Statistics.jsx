@@ -250,61 +250,6 @@ export function Statistics() {
             )}
           </div>
         )}
-
-        {!isSearching && !searchResults && (
-          <>
-            <div className="filter-group">
-              <label>Time Period</label>
-              <select 
-                value={selectedPeriod} 
-                onChange={(e) => setSelectedPeriod(e.target.value)}
-              >
-                {Object.entries(TIME_PERIODS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="filter-group">
-              <label>Show Statistics</label>
-              <div id="filters">
-                <label className="task-chip">
-                  <input
-                    type="checkbox"
-                    checked={selectedTasks.includes('all')}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedTasks(['all'])
-                      } else {
-                        setSelectedTasks([])
-                      }
-                    }}
-                  />
-                  All Tasks
-                </label>
-                {tasks.map(task => (
-                  <label key={task.id} className="task-chip">
-                    <input
-                      type="checkbox"
-                      checked={selectedTasks.includes(task.id)}
-                      onChange={(e) => {
-                        setSelectedTasks(prev => {
-                          if (e.target.checked) {
-                            const newSelection = prev.filter(id => id !== 'all')
-                            return [...newSelection, task.id]
-                          } else {
-                            return prev.filter(id => id !== task.id)
-                          }
-                        })
-                      }}
-                    />
-                    {task.name}
-                  </label>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
       </div>
 
       {isSearching ? (
@@ -324,6 +269,61 @@ export function Statistics() {
         <>
           <br />
           <h2>Overview</h2>
+
+          <div className="filter-group">
+            <label>Time Period</label>
+            <div className="time-periods">
+              {Object.entries(TIME_PERIODS).map(([value, label]) => (
+                <button
+                  key={value}
+                  className={`time-period ${selectedPeriod === value ? 'selected' : ''}`}
+                  onClick={() => setSelectedPeriod(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="filter-group">
+            <label>Show Statistics</label>
+            <div id="filters">
+              <label className="task-chip">
+                <input
+                  type="checkbox"
+                  checked={selectedTasks.includes('all')}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedTasks(['all'])
+                    } else {
+                      setSelectedTasks([])
+                    }
+                  }}
+                />
+                All Tasks
+              </label>
+              {tasks.map(task => (
+                <label key={task.id} className="task-chip">
+                  <input
+                    type="checkbox"
+                    checked={selectedTasks.includes(task.id)}
+                    onChange={(e) => {
+                      setSelectedTasks(prev => {
+                        if (e.target.checked) {
+                          const newSelection = prev.filter(id => id !== 'all')
+                          return [...newSelection, task.id]
+                        } else {
+                          return prev.filter(id => id !== task.id)
+                        }
+                      })
+                    }}
+                  />
+                  {task.name}
+                </label>
+              ))}
+            </div>
+          </div>
+
           <div id="stat-summary" className="remark">
             You focused for a total duration of{' '}
             <span id="stat-summary-total">{formatTime(stats.total)}</span>{' '}

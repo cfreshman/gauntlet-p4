@@ -86,10 +86,13 @@ export function SessionList({ sessions, onDelete, searchResults }) {
           className={`session ${searchResults ? 'search-result' : ''} ${
             searchResults && session.match_type === 'session' ? 'session-match' : ''
           }`}
-          onClick={() => (session.matching_rounds?.length > 0 || session.rounds?.length > 0) ? toggleSession(session.id) : null}
-          style={{ cursor: (session.matching_rounds?.length > 0 || session.rounds?.length > 0) ? 'pointer' : 'default' }}
+          style={{ cursor: 'default' }}
         >
-          <div className="session-header">
+          <div 
+            className="session-header" 
+            style={{ cursor: (session.matching_rounds?.length > 0 || session.rounds?.length > 0) ? 'pointer' : 'default' }}
+            onClick={() => (session.matching_rounds?.length > 0 || session.rounds?.length > 0) ? toggleSession(session.id) : null}
+          >
             <div className="time">
               {formatDate(session.created_at)} {formatTime(session.created_at)}
             </div>
@@ -107,34 +110,43 @@ export function SessionList({ sessions, onDelete, searchResults }) {
               </div>
 
               {expandedSessions.has(session.id) && (
-                <div className="rounds">
-                  {(searchResults ? 
-                    (session.match_type === 'session' ? session.rounds : session.matching_rounds)
-                    : session.rounds
-                  ).map(round => (
-                    <div 
-                      key={round.id} 
-                      className={`stat-round ${searchResults && session.match_type === 'round' ? 'round-match' : ''}`}
-                    >
-                      <div className="stat-round-header">
-                        <div className="stat-round-task">
-                          {round.task?.name}
+                <>
+                  <div className="rounds">
+                    {(searchResults ? 
+                      (session.match_type === 'session' ? session.rounds : session.matching_rounds)
+                      : session.rounds
+                    ).map(round => (
+                      <div 
+                        key={round.id} 
+                        className={`stat-round ${searchResults && session.match_type === 'round' ? 'round-match' : ''}`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="stat-round-header">
+                          <div className="stat-round-task">
+                            {round.task?.name}
+                          </div>
+                          <div className="stat-round-time">{formatTime(round.started_at)}</div>
+                          <div className="stat-round-duration">{formatDuration(round.duration)}</div>
+                          <button 
+                            className="stat-round-delete"
+                            onClick={(e) => handleDeleteRound(round.id, session.id, e)}
+                          >
+                            <span className="material-icons-round">delete</span>
+                          </button>
                         </div>
-                        <div className="stat-round-time">{formatTime(round.started_at)}</div>
-                        <div className="stat-round-duration">{formatDuration(round.duration)}</div>
-                        <button 
-                          className="stat-round-delete"
-                          onClick={(e) => handleDeleteRound(round.id, session.id, e)}
-                        >
-                          <span className="material-icons-round">delete</span>
-                        </button>
+                        {round.notes && (
+                          <div className="stat-round-notes">{round.notes}</div>
+                        )}
                       </div>
-                      {round.notes && (
-                        <div className="stat-round-notes">{round.notes}</div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                  <div 
+                    className="session-close-bar"
+                    onClick={() => toggleSession(session.id)}
+                  >
+                    <span className="material-icons-round">expand_less</span>
+                  </div>
+                </>
               )}
             </>
           )}

@@ -192,6 +192,39 @@
   width: 100%;
 }
 
+.filter-group + .filter-group {
+  margin-top: 0.75rem;
+}
+
+.time-periods {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.time-period {
+  background: var(--bgcolor2);
+  border: none;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.5rem;
+  color: var(--color);
+  font-size: 0.9rem;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s, background-color 0.2s;
+}
+
+.time-period:hover {
+  opacity: 1;
+  background: var(--bgcolor);
+}
+
+.time-period.selected {
+  background: var(--coloraccent);
+  opacity: 1;
+  color: var(--bgcolor);
+}
+
 .filter-group label {
   font-size: 0.9rem;
   font-weight: 500;
@@ -335,6 +368,21 @@
   margin-top: 0.5rem;
   padding-top: 0.5rem;
   border-top: 1px solid var(--bgcolor);
+}
+
+.session-close-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bgcolor);
+  height: 1.5rem;
+  margin-top: 0.35rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.session-close-bar:hover {
+  opacity: 0.8;
 }
 
 .stat-round {

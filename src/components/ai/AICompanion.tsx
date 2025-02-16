@@ -31,6 +31,26 @@ export function AICompanion() {
     }
   }, [headerData, isLoading, error, isOpen])
 
+  // Convert image to URL when headerData changes
+  useEffect(() => {
+    if (headerData?.imageUrl && !headerData.imageUrl.startsWith('data:')) {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.width
+        canvas.height = img.height
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.drawImage(img, 0, 0)
+          const dataUrl = canvas.toDataURL('image/png', 0.8)
+          useAIStore.getState().updateHeaderImage(dataUrl)
+        }
+      }
+      img.src = headerData.imageUrl
+    }
+  }, [headerData?.imageUrl])
+
   // Scroll to bottom when messages change
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })

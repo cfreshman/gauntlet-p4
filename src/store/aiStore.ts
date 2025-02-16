@@ -12,20 +12,14 @@ type AIStore = {
   isLoading: boolean
   error: string | null
   fetchHeaderData: () => Promise<void>
+  updateHeaderImage: (base64Image: string) => void
 }
 
 // Load cached data from localStorage
-const loadCachedData = (): HeaderData | null => {
+function loadCachedData(): HeaderData | null {
   const cached = localStorage.getItem('ai_header_data')
-  if (cached) {
-    const data = JSON.parse(cached)
-    // Check if cache is less than 24 hours old
-    const cacheAge = Date.now() - new Date(data.cachedAt).getTime()
-    if (cacheAge < 24 * 60 * 60 * 1000) {
-      return data
-    }
-  }
-  return null
+  if (!cached) return null
+  return JSON.parse(cached)
 }
 
 export const useAIStore = create<AIStore>((set) => ({
@@ -45,5 +39,18 @@ export const useAIStore = create<AIStore>((set) => ({
     } finally {
       set({ isLoading: false })
     }
+  },
+
+  updateHeaderImage: (base64Image: string) => {
+    set(state => {
+      if (!state.headerData) return state
+      const newData = {
+        ...state.headerData,
+        imageUrl: base64Image
+      }
+      // Update cache
+      localStorage.setItem('ai_header_data', JSON.stringify(newData))
+      return { headerData: newData }
+    })
   }
 })) 

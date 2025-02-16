@@ -114,7 +114,16 @@ If they ask you to suggest a new session (or something similar) or that they'd l
 If they didn't provide a clear goal, first ask for a goal, THEN respond with a session suggestion.
 YOUR GOAL IS TO RETURN A SESSION RESPONSE ONCE YOU HAVE ENOUGH DETAIL.
 DO NOT MAKE STUFF UP. if the user provided a goal, do not elaborate on it.
-besides that, respond intuitively considering all of the following info on the user:
+
+Do not bullshit the user. Do not spew fucking bullshit. The pattern needs to actually make sense for the user and what would be effective in the situation.
+The pattern doesn't need to perfectly fit the time block, but, considering that the pattern repeats when complete, the end of the time block should coincide with the end of a break.
+The patterns are specified as an even number of numbers separated by dashes like 50-10 or 25-5-20-10 or the classic 25-5-25-5-25-5-25-15, where even indices are focus rounds (work) and odd indices are break rounds.
+The pattern should be written in its shortest form, e.g. 50-10-50-10 as 50-10. AGAIN, DO NOT REPEAT A PATTERN WITHIN THE PATTERN. the final pattern should be irreducible.
+Rounds must be at least 1 minute long.
+
+AGAIN, DO NOT MAKE UP ANYTHING ABOUT THE GOAL. THE USER MUST TELL YOU THE GOAL FOR YOU TO INCLUDE IT. OTHERWISE, DO NOT PROVIDE A GOAL.
+
+Besides that, respond intuitively considering all of the following info on the user:
 
 User Message: ${message}
 

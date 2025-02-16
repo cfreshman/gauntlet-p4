@@ -172,6 +172,9 @@ export function TopNav() {
     }
   }
 
+  // Check if running on mobile
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+
   return (
     <nav className="top-nav">
       <div className="nav-group">
@@ -215,26 +218,23 @@ export function TopNav() {
           onClick={AICompanion.open}
         />
 
-        <IconButton
-          id="popupbtn"
-          title="Toggle PIP Mode"
-          icon="picture_in_picture"
-          className="nav-button"
-          onClick={async () => {
-            if (pipWindowRef.current) {
-              pipWindowRef.current.close()
-            } else if (document.pictureInPictureElement) {
-              await document.exitPictureInPicture()
-            } else if (videoRef.current && videoRef.current.style.display === 'block') {
-              videoRef.current.style.display = 'none'
-              if (document.fullscreenElement) {
-                await document.exitFullscreen()
+        {!isMobile && (
+          <IconButton
+            id="popupbtn"
+            title="Toggle PIP Mode"
+            icon="picture_in_picture"
+            className="nav-button"
+            onClick={async () => {
+              if (pipWindowRef.current) {
+                pipWindowRef.current.close()
+              } else if (document.pictureInPictureElement) {
+                await document.exitPictureInPicture()
+              } else {
+                await enterPiP()
               }
-            } else {
-              await enterPiP()
-            }
-          }}
-        />
+            }}
+          />
+        )}
 
         <IconButton
           id="managetaskbtn"

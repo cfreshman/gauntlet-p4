@@ -172,7 +172,7 @@ serve(async (req) => {
       messages: [
         {
           role: 'system',
-          content: `You are analyzing search results from a Pomodoro timer app. The results are from a semantic search with a low similarity threshold. Your task is to:
+          content: `You are analyzing search results from a Pomodoro timer app. You should provide a general summary of the results along with focused insights. Your task is to:
 
 1. Filter out irrelevant matches using STRICT criteria:
    - For sessions: Include ONLY if the goals/pattern are DIRECTLY related to the query (e.g. for query "bug fixes", goals must explicitly mention bugs/fixes/debugging)

@@ -14,13 +14,18 @@
 @import url('./components/statistics/HeatmapCalendar.css');
 @import url('./components/ai/AICompanion.css');
 @import url('./auth/auth-ui.css');
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap');
 
 * {
 	box-sizing: border-box;
 	margin: 0;
 	padding: 0;
-	font-family: monospace;
+	font-family: 'Geist Mono', monospace;
 	/* text-transform: lowercase; */
+}
+
+code, pre, .monospace, .pattern, .stat-round-duration {
+  font-family: 'Geist Mono', monospace;
 }
 
 :root {

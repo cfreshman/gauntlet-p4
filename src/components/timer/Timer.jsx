@@ -265,7 +265,7 @@ export function Timer({ isPip }) {
 
         <div className="timer-content">
           <div id="status" className="status-text">
-            {isBreak ? (isLongBreak ? 'LONG BREAK' : 'SHORT BREAK') : 'FOCUS'}
+            {isBreak ? 'BREAK' : 'FOCUS'}
           </div>
 
           <div id="time" className="time-display">

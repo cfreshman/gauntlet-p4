@@ -183,30 +183,6 @@
   transform: translateY(-2px);
 }
 
-.regenerate-button {
-  display: inline-flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.375rem 0.75rem;
-  background-color: var(--bgcolor2);
-  color: var(--coloraccent);
-  border: 1px solid var(--coloraccent);
-  border-radius: 0.375rem;
-  cursor: pointer;
-  font-size: 0.75rem;
-  margin-top: 0.5rem;
-  transition: all 0.2s;
-}
-
-.regenerate-button:hover {
-  opacity: 1;
-}
-
-.regenerate-button span {
-  font-size: 1rem;
-}
-
 .message button {
   margin-top: 0.75rem;
   padding: 0.5rem 0.75rem;

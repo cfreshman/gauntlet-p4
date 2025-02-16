@@ -220,9 +220,6 @@ export function AICompanion() {
                     </div>
                   )}
                   <div>{headerData.message}</div>
-                  <button className="regenerate-button" onClick={fetchHeaderData}>
-                    Regenerate
-                  </button>
                 </div>
               )}
               

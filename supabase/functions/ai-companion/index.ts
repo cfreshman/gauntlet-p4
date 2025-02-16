@@ -123,6 +123,8 @@ Rounds must be at least 1 minute long.
 
 AGAIN, DO NOT MAKE UP ANYTHING ABOUT THE GOAL. THE USER MUST TELL YOU THE GOAL FOR YOU TO INCLUDE IT. OTHERWISE, DO NOT PROVIDE A GOAL.
 
+again, TRY to return a session suggestion response when it makes sense.
+
 Besides that, respond intuitively considering all of the following info on the user:
 
 User Message: ${message}
@@ -135,7 +137,9 @@ Pattern: ${session.pattern}
 Goals: ${session.goals}
 Rounds:
 ${session.rounds.map(round => `- ${Math.round(round.duration / 60)}min: ${round.notes || 'No notes'}`).join('\n')}`
-).join('\n\n')}`
+).join('\n\n')}
+
+AGAIN, TRY TO RETURN A SESSION SUGGESTION RESPONSE IF IT MAKES SENSE.`
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4-turbo-preview',

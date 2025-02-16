@@ -160,6 +160,13 @@ export function Timer({ isPip }) {
               duration
             }
           })
+        } else if (timer?.elapsed_time >= duration && !isBreak) {
+          // Timer is stopped at duration, handle round completion
+          const roundId = await useTimerStore.getState().nextRound()
+          if (roundId) {
+            setCurrentRoundId(roundId)
+            setShowNotesDialog(true)
+          }
         }
       }
     }
@@ -168,7 +175,7 @@ export function Timer({ isPip }) {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [])
+  }, [duration, isBreak])
 
   // Effect to sync task changes
   useEffect(() => {

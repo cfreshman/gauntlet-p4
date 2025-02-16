@@ -311,28 +311,45 @@ export const useTimerStore = create((set, get) => ({
       // Only save if they completed enough of the session
       if (timerState.elapsed_time >= duration * 0.75 || timerState.elapsed_time >= 900) {
         try {
-          const { data: round } = await supabase
+          // Check for recently created rounds in the last minute
+          const oneMinuteAgo = new Date(Date.now() - 60000).toISOString()
+          const { data: recentRounds } = await supabase
             .from('rounds')
-            .insert({
-              user_id: user.id,
-              session_id: freshSession.id,
-              task_id: timerState.current_task_id,
-              started_at: new Date(Date.now() - (timerState.elapsed_time * 1000)).toISOString(),
-              duration: timerState.elapsed_time,
-              pattern_position: timerState.pattern_position
-            })
-            .select()
-            .single()
+            .select('id')
+            .eq('session_id', freshSession.id)
+            .eq('pattern_position', timerState.pattern_position)
+            .eq('duration', timerState.elapsed_time)
+            .gte('created_at', oneMinuteAgo)
+            .limit(1)
 
-          if (round) {
-            createdRoundId = round.id
-            // Generate embeddings for the round
-            await supabase.functions.invoke('generate-embeddings', {
-              body: { 
-                type: 'round',
-                id: round.id
-              }
-            })
+          // Only create a new round if no recent rounds exist
+          if (!recentRounds?.length) {
+            const { data: round } = await supabase
+              .from('rounds')
+              .insert({
+                user_id: user.id,
+                session_id: freshSession.id,
+                task_id: timerState.current_task_id,
+                started_at: new Date(Date.now() - (timerState.elapsed_time * 1000)).toISOString(),
+                duration: timerState.elapsed_time,
+                pattern_position: timerState.pattern_position
+              })
+              .select()
+              .single()
+
+            if (round) {
+              createdRoundId = round.id
+              // Generate embeddings for the round
+              await supabase.functions.invoke('generate-embeddings', {
+                body: { 
+                  type: 'round',
+                  id: round.id
+                }
+              })
+            }
+          } else {
+            // Use the existing round ID
+            createdRoundId = recentRounds[0].id
           }
         } catch (error) {
           console.error('Error saving completed round:', error)

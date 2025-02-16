@@ -119,7 +119,7 @@ export async function createSession(pattern, goals) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Must be logged in to create session')
 
-  return await supabase
+  const { data: session, error } = await supabase
     .from('sessions')
     .insert({
       pattern,
@@ -128,6 +128,18 @@ export async function createSession(pattern, goals) {
     })
     .select()
     .single()
+
+  if (error) throw error
+
+  // Generate embeddings for the session
+  await supabase.functions.invoke('generate-embeddings', {
+    body: { 
+      type: 'session',
+      id: session.id
+    }
+  })
+
+  return { data: session, error }
 }
 
 export async function getSessions(startDate, endDate) {
@@ -192,7 +204,7 @@ export async function saveRound(roundData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Must be logged in to save round')
 
-  return await supabase
+  const { data: round, error } = await supabase
     .from('rounds')
     .insert({
       user_id: user.id,
@@ -200,6 +212,18 @@ export async function saveRound(roundData) {
     })
     .select()
     .single()
+
+  if (error) throw error
+
+  // Generate embeddings for the round
+  await supabase.functions.invoke('generate-embeddings', {
+    body: { 
+      type: 'round',
+      id: round.id
+    }
+  })
+
+  return { data: round, error }
 }
 
 export async function deleteRound(id) {

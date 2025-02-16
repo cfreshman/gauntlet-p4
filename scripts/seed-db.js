@@ -33,6 +33,30 @@ const SESSION_DURATIONS = [
   20  // Shorter session
 ]
 
+// Sample goals for sessions
+const SAMPLE_GOALS = [
+  'Complete feature implementation',
+  'Review and fix reported bugs',
+  'Write documentation for new API',
+  'Plan next sprint tasks',
+  'Learn new framework concepts',
+  'Catch up on code reviews',
+  'Prepare for team meeting',
+  'Clear email backlog'
+]
+
+// Sample notes for rounds
+const SAMPLE_NOTES = [
+  'Made good progress on implementation',
+  'Fixed critical bug in authentication',
+  'Completed API documentation section',
+  'Organized tasks and priorities',
+  'Learned about new React features',
+  'Reviewed and approved PRs',
+  'Created meeting agenda',
+  'Responded to important emails'
+]
+
 // Generate a random date between start and end
 function randomDate(start, end) {
   return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()))
@@ -43,39 +67,6 @@ function randomDuration() {
   const baseTime = SESSION_DURATIONS[Math.floor(Math.random() * SESSION_DURATIONS.length)]
   // Add some random variance (-2 to +5 minutes)
   return baseTime + Math.floor(Math.random() * 7) - 2
-}
-
-// Generate sessions for a single day
-function generateDaySessions(userId, tasks, date) {
-  const sessions = []
-  // Generate 4-8 sessions per day
-  const numSessions = 4 + Math.floor(Math.random() * 5)
-  
-  let currentTime = new Date(date)
-  currentTime.setHours(9) // Start at 9 AM
-
-  for (let i = 0; i < numSessions; i++) {
-    // Add some random time between sessions (15-45 minutes)
-    currentTime = new Date(currentTime.getTime() + (15 + Math.floor(Math.random() * 30)) * 60000)
-    
-    const timerDuration = 25 * 60 // Standard 25 minutes in seconds
-    const actualDuration = randomDuration() * 60 // Convert to seconds
-    
-    sessions.push({
-      user_id: userId,
-      task_id: tasks[Math.floor(Math.random() * tasks.length)].id,
-      start_time: currentTime.toISOString(),
-      end_time: new Date(currentTime.getTime() + actualDuration * 1000).toISOString(),
-      timer_duration: timerDuration,
-      actual_duration: actualDuration,
-      notes: `Sample session ${i + 1} for ${currentTime.toDateString()}`
-    })
-
-    // Move time forward by the session duration
-    currentTime = new Date(currentTime.getTime() + actualDuration * 1000)
-  }
-
-  return sessions
 }
 
 async function seedDatabase() {
@@ -111,12 +102,13 @@ async function seedDatabase() {
       // Only generate sessions for weekdays
       if (d.getDay() !== 0 && d.getDay() !== 6) {
         // Create a session for this day
+        const goals = SAMPLE_GOALS[Math.floor(Math.random() * SAMPLE_GOALS.length)]
         const { data: session, error: sessionError } = await supabase
           .from('sessions')
           .insert({
             user_id: user.id,
             pattern: '25-5-25-5-25-5-25-15',
-            goals: `Sample goals for ${d.toDateString()}`,
+            goals,
             created_at: d.toISOString()
           })
           .select()
@@ -134,8 +126,9 @@ async function seedDatabase() {
           currentTime = new Date(currentTime.getTime() + (15 + Math.floor(Math.random() * 30)) * 60000)
           
           const duration = randomDuration() * 60 // Convert to seconds
+          const notes = SAMPLE_NOTES[Math.floor(Math.random() * SAMPLE_NOTES.length)]
           
-          const { error: roundError } = await supabase
+          const { data: round, error: roundError } = await supabase
             .from('rounds')
             .insert({
               user_id: user.id,
@@ -143,20 +136,28 @@ async function seedDatabase() {
               task_id: tasks[Math.floor(Math.random() * tasks.length)].id,
               started_at: currentTime.toISOString(),
               duration: duration,
-              notes: `Sample round ${i + 1} for ${currentTime.toDateString()}`,
+              notes,
               pattern_position: i * 2 // Only store focus rounds, not breaks
             })
+            .select()
+            .single()
 
           if (roundError) throw roundError
 
           // Move time forward by the round duration plus break
           currentTime = new Date(currentTime.getTime() + duration * 1000 + 5 * 60000) // Add 5 min break
         }
+
+        console.log(`Created session for ${d.toDateString()} with ${numRounds} rounds`)
       }
     }
 
     console.log('Created sample sessions and rounds')
     console.log('Database seeding completed successfully')
+    console.log('\nTo generate embeddings for search functionality:')
+    console.log('1. Open the browser console')
+    console.log('2. Run: await reindexEmbeddings()')
+    console.log('This will generate embeddings for all sessions and rounds')
 
   } catch (error) {
     console.error('Error seeding database:', error)

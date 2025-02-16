@@ -17,6 +17,7 @@ import { useNotificationStore } from './store/notificationStore'
 import { useTaskStore } from './store/taskStore'
 import { useTimerStore } from './store/timerStore'
 import { supabase, subscribeToTimer } from './supabase-client'
+import './utils/reindex' // Make reindexEmbeddings available globally
 
 export function App() {
   const { theme, accent, setTheme } = useThemeStore()

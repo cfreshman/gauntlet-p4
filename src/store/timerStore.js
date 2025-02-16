@@ -326,6 +326,13 @@ export const useTimerStore = create((set, get) => ({
 
           if (round) {
             createdRoundId = round.id
+            // Generate embeddings for the round
+            await supabase.functions.invoke('generate-embeddings', {
+              body: { 
+                type: 'round',
+                id: round.id
+              }
+            })
           }
         } catch (error) {
           console.error('Error saving completed round:', error)

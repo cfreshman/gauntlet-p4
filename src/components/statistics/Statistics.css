@@ -38,6 +38,10 @@
 .remark span {
   color: var(--coloraccent);
   margin: 0 0.25rem;
+  font-weight: 500;
+  padding: 0 0.5rem;
+  border-radius: 0.25rem;
+  background-color: var(--bgcolor2);
 }
 
 #pie-container {
@@ -56,7 +60,7 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
 }
 
 .legend {
@@ -178,6 +182,7 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .filter-group {
@@ -273,6 +278,7 @@
   flex-direction: column;
   gap: 0.35rem;
   width: 100%;
+  margin-top: 0.5rem;
 }
 
 .session {
@@ -285,23 +291,32 @@
   gap: 0.15rem;
 }
 
+.session-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding-right: 2rem;
+}
+
 .time {
   font-size: 0.9rem;
   font-weight: 500;
   color: var(--coloraccent);
+  line-height: 1.2;
 }
 
 .pattern {
   font-family: monospace;
   font-size: 0.85rem;
   opacity: 0.8;
+  line-height: 1.2;
 }
 
 .goals {
   opacity: 0.8;
   white-space: pre-wrap;
   font-size: 0.85rem;
-  margin-top: 0.15rem;
+  line-height: 1.2;
 }
 
 .action {
@@ -311,10 +326,9 @@
   background: none;
   border: none;
   color: var(--color);
-  opacity: 0.6;
+  opacity: 0.8;
   cursor: pointer;
   padding: 0.15rem;
-  transition: opacity 0.2s;
 }
 
 .rounds {
@@ -362,13 +376,12 @@
   background: none;
   border: none;
   color: var(--color);
-  opacity: 0.6;
+  opacity: 0.8;
   cursor: pointer;
   padding: 0.15rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.2s;
 }
 
 .stat-round-delete:hover {
@@ -382,4 +395,148 @@
   opacity: 0.8;
   font-size: 0.8rem;
   white-space: pre-wrap;
+}
+
+/* Add search styles */
+.search-form {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.search-input {
+  flex: 1;
+  padding: 0.75rem;
+  background-color: var(--bgcolor2);
+  border: 0.125rem solid transparent;
+  border-radius: 0.5rem;
+  color: var(--color);
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.search-input:focus {
+  border-color: var(--coloraccent);
+  outline: none;
+}
+
+.search-button {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--coloraccent);
+  color: var(--bgcolor);
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.search-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.search-analysis {
+  background-color: var(--bgcolor2);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.search-analysis p {
+  margin: 0;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.search-analysis h4 {
+  color: var(--coloraccent);
+  margin: 0.75rem 0 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.search-analysis ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.9rem;
+  opacity: 0.9;
+  line-height: 1.4;
+}
+
+.search-analysis li + li {
+  margin-top: 0.35rem;
+}
+
+.clear-search {
+  margin-left: 1rem;
+  padding: 0.25rem 0.75rem;
+  background-color: var(--bgcolor2);
+  color: var(--color);
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.clear-search:hover {
+  background-color: var(--bgcolor);
+}
+
+/* Search result styles */
+.session.search-result {
+  border: 0.125rem solid transparent;
+}
+
+.session.search-result.session-match {
+  border-color: var(--coloraccent);
+}
+
+.stat-round.round-match {
+  border-left: 0.25rem solid var(--coloraccent);
+}
+
+h2 {
+  margin: 0.75rem 0 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--coloraccent);
+}
+
+/* Loading spinner */
+.statistics-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 15rem;
+  width: 100%;
+}
+
+.statistics-loading svg {
+  width: 120px;
+  height: 120px;
+}
+
+.statistics-loading circle {
+  stroke: var(--coloraccent);
+  transform-origin: 50% 50%;
+  transform: rotate(-90deg);
+  animation: loading-animation 2s ease infinite;
+}
+
+/* Remove old loading animation */
+@keyframes loading-animation {
+  0% {
+    stroke-dasharray: 1, 150;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -35;
+  }
+  100% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -124;
+  }
 }

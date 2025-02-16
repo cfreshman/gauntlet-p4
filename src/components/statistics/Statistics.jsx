@@ -5,6 +5,7 @@ import { TaskBarChart } from './TaskBarChart'
 import { SessionList } from './SessionList'
 import { HeatmapCalendar } from './HeatmapCalendar'
 import { getSessions } from '../../supabase-client'
+import { searchSessions } from '../../api/search-sessions'
 
 const TIME_PERIODS = {
   '0': 'Today',
@@ -34,6 +35,9 @@ export function Statistics() {
   const [stats, setStats] = useState(DEFAULT_STATS)
   const [sessions, setSessions] = useState([])
   const [isOpen, setIsOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState(null)
+  const [isSearching, setIsSearching] = useState(false)
 
   useEffect(() => {
     // Add event listener to show/hide statistics
@@ -183,6 +187,27 @@ export function Statistics() {
     fetchStats()
   }
 
+  const handleSearch = async (e) => {
+    e.preventDefault()
+    if (!searchQuery.trim()) {
+      setSearchResults(null)
+      fetchStats()
+      return
+    }
+
+    setIsSearching(true)
+    try {
+      const results = await searchSessions(searchQuery)
+      setSearchResults(results)
+      // Update sessions list with search results
+      setSessions(results.results)
+    } catch (error) {
+      console.error('Search error:', error)
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
   return (
     <PageLayout
       id="statistics"
@@ -192,138 +217,213 @@ export function Statistics() {
     >
       <div className="statistics-filters">
         <div className="filter-group">
-          <label>Time Period</label>
-          <select 
-            value={selectedPeriod} 
-            onChange={(e) => setSelectedPeriod(e.target.value)}
-          >
-            {Object.entries(TIME_PERIODS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
+          <form onSubmit={handleSearch} className="search-form">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search session notes, goals, or tasks..."
+              className="search-input"
+            />
+            <button 
+              type="submit" 
+              className="search-button"
+              disabled={isSearching}
+            >
+              {isSearching ? 'Searching...' : 'Search'}
+            </button>
+          </form>
         </div>
 
-        <div className="filter-group">
-          <label>Show Statistics</label>
-          <div id="filters">
-            <label className="task-chip">
-              <input
-                type="checkbox"
-                checked={selectedTasks.includes('all')}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setSelectedTasks(['all'])
-                  } else {
-                    setSelectedTasks([])
-                  }
-                }}
-              />
-              All Tasks
-            </label>
-            {tasks.map(task => (
-              <label key={task.id} className="task-chip">
-                <input
-                  type="checkbox"
-                  checked={selectedTasks.includes(task.id)}
-                  onChange={(e) => {
-                    setSelectedTasks(prev => {
-                      if (e.target.checked) {
-                        // If checking a task
-                        const newSelection = prev.filter(id => id !== 'all')
-                        return [...newSelection, task.id]
-                      } else {
-                        // If unchecking a task
-                        const newSelection = prev.filter(id => id !== task.id)
-                        // If no tasks selected, leave it empty instead of defaulting to 'all'
-                        return newSelection
-                      }
-                    })
-                  }}
-                />
-                {task.name}
-              </label>
-            ))}
+        {!isSearching && searchResults?.analysis && (
+          <div className="search-analysis">
+            <p>{searchResults.analysis.summary}</p>
+            {searchResults.analysis.insights?.length > 0 && (
+              <div className="insights">
+                <h4>Key Insights</h4>
+                <ul>
+                  {searchResults.analysis.insights.map((insight, i) => (
+                    <li key={i}>{insight}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
+        )}
+
+        {!isSearching && !searchResults && (
+          <>
+            <div className="filter-group">
+              <label>Time Period</label>
+              <select 
+                value={selectedPeriod} 
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+              >
+                {Object.entries(TIME_PERIODS).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <label>Show Statistics</label>
+              <div id="filters">
+                <label className="task-chip">
+                  <input
+                    type="checkbox"
+                    checked={selectedTasks.includes('all')}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedTasks(['all'])
+                      } else {
+                        setSelectedTasks([])
+                      }
+                    }}
+                  />
+                  All Tasks
+                </label>
+                {tasks.map(task => (
+                  <label key={task.id} className="task-chip">
+                    <input
+                      type="checkbox"
+                      checked={selectedTasks.includes(task.id)}
+                      onChange={(e) => {
+                        setSelectedTasks(prev => {
+                          if (e.target.checked) {
+                            const newSelection = prev.filter(id => id !== 'all')
+                            return [...newSelection, task.id]
+                          } else {
+                            return prev.filter(id => id !== task.id)
+                          }
+                        })
+                      }}
+                    />
+                    {task.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {isSearching ? (
+        <div className="statistics-loading">
+          <svg viewBox="0 0 120 120">
+            <circle
+              className="loading-ring"
+              cx="60"
+              cy="60"
+              r="54"
+              fill="none"
+              strokeWidth="8"
+            />
+          </svg>
         </div>
-      </div>
+      ) : !searchResults ? (
+        <>
+          <br />
+          <h2>Overview</h2>
+          <div id="stat-summary" className="remark">
+            You focused for a total duration of{' '}
+            <span id="stat-summary-total">{formatTime(stats.total)}</span>{' '}
+            consisting of{' '}
+            <span id="stat-summary-rounds">{stats.rounds} Focus Rounds</span>{' '}
+            with an average round duration of{' '}
+            <span id="stat-summary-average">{formatTime(stats.average)}</span>
+            <br /><br />
+            Shortest round duration:{' '}
+            <span id="stat-summary-shortest">{formatTime(stats.shortest)}</span>
+            <br />
+            Longest round duration:{' '}
+            <span id="stat-summary-longest">{formatTime(stats.longest)}</span>
+            <br /><br />
+            Most productive time:{' '}
+            <span>{getMostProductiveTime(stats.hourlyDistribution)}</span>
+            <br />
+            Most productive day:{' '}
+            <span>{getMostProductiveTime(stats.dailyDistribution)}</span>
+            <br />
+            Most productive month:{' '}
+            <span>{getMostProductiveTime(stats.monthlyDistribution)}</span>
+          </div>
 
-      <br />
-      <h2>Overview</h2>
-      <div id="stat-summary" className="remark">
-        You focused for a total duration of
-        <span id="stat-summary-total">{formatTime(stats.total)}</span>
-        consisting of
-        <span id="stat-summary-rounds">{stats.rounds} Focus Rounds</span>
-        with an average round duration of
-        <span id="stat-summary-average">{formatTime(stats.average)}</span>
-        <br /><br />
-        Shortest round duration: <span id="stat-summary-shortest">{formatTime(stats.shortest)}</span>
-        <br />
-        Longest round duration: <span id="stat-summary-longest">{formatTime(stats.longest)}</span>
-        <br /><br />
-        Most productive time: <span>{getMostProductiveTime(stats.hourlyDistribution)}</span>
-        <br />
-        Most productive day: <span>{getMostProductiveTime(stats.dailyDistribution)}</span>
-        <br />
-        Most productive month: <span>{getMostProductiveTime(stats.monthlyDistribution)}</span>
-      </div>
+          <h2>Task Distribution</h2>
+          <TaskBarChart data={stats.taskDistribution} />
 
-      <h2>Task Distribution</h2>
-      <TaskBarChart data={stats.taskDistribution} />
+          <h2>Hourly Distribution</h2>
+          <TaskBarChart 
+            data={[
+              { name: '00:00 - 03:00', time: Object.entries(stats.hourlyDistribution)
+                .filter(([hour]) => parseInt(hour) >= 0 && parseInt(hour) < 3)
+                .reduce((sum, [_, time]) => sum + time, 0) },
+              { name: '03:00 - 06:00', time: Object.entries(stats.hourlyDistribution)
+                .filter(([hour]) => parseInt(hour) >= 3 && parseInt(hour) < 6)
+                .reduce((sum, [_, time]) => sum + time, 0) },
+              { name: '06:00 - 09:00', time: Object.entries(stats.hourlyDistribution)
+                .filter(([hour]) => parseInt(hour) >= 6 && parseInt(hour) < 9)
+                .reduce((sum, [_, time]) => sum + time, 0) },
+              { name: '09:00 - 12:00', time: Object.entries(stats.hourlyDistribution)
+                .filter(([hour]) => parseInt(hour) >= 9 && parseInt(hour) < 12)
+                .reduce((sum, [_, time]) => sum + time, 0) },
+              { name: '12:00 - 15:00', time: Object.entries(stats.hourlyDistribution)
+                .filter(([hour]) => parseInt(hour) >= 12 && parseInt(hour) < 15)
+                .reduce((sum, [_, time]) => sum + time, 0) },
+              { name: '15:00 - 18:00', time: Object.entries(stats.hourlyDistribution)
+                .filter(([hour]) => parseInt(hour) >= 15 && parseInt(hour) < 18)
+                .reduce((sum, [_, time]) => sum + time, 0) },
+              { name: '18:00 - 21:00', time: Object.entries(stats.hourlyDistribution)
+                .filter(([hour]) => parseInt(hour) >= 18 && parseInt(hour) < 21)
+                .reduce((sum, [_, time]) => sum + time, 0) },
+              { name: '21:00 - 24:00', time: Object.entries(stats.hourlyDistribution)
+                .filter(([hour]) => parseInt(hour) >= 21 && parseInt(hour) < 24)
+                .reduce((sum, [_, time]) => sum + time, 0) }
+            ]} 
+          />
 
-      <h2>Hourly Distribution</h2>
-      <TaskBarChart 
-        data={[
-          { name: '00:00 - 03:00', time: Object.entries(stats.hourlyDistribution)
-            .filter(([hour]) => parseInt(hour) >= 0 && parseInt(hour) < 3)
-            .reduce((sum, [_, time]) => sum + time, 0) },
-          { name: '03:00 - 06:00', time: Object.entries(stats.hourlyDistribution)
-            .filter(([hour]) => parseInt(hour) >= 3 && parseInt(hour) < 6)
-            .reduce((sum, [_, time]) => sum + time, 0) },
-          { name: '06:00 - 09:00', time: Object.entries(stats.hourlyDistribution)
-            .filter(([hour]) => parseInt(hour) >= 6 && parseInt(hour) < 9)
-            .reduce((sum, [_, time]) => sum + time, 0) },
-          { name: '09:00 - 12:00', time: Object.entries(stats.hourlyDistribution)
-            .filter(([hour]) => parseInt(hour) >= 9 && parseInt(hour) < 12)
-            .reduce((sum, [_, time]) => sum + time, 0) },
-          { name: '12:00 - 15:00', time: Object.entries(stats.hourlyDistribution)
-            .filter(([hour]) => parseInt(hour) >= 12 && parseInt(hour) < 15)
-            .reduce((sum, [_, time]) => sum + time, 0) },
-          { name: '15:00 - 18:00', time: Object.entries(stats.hourlyDistribution)
-            .filter(([hour]) => parseInt(hour) >= 15 && parseInt(hour) < 18)
-            .reduce((sum, [_, time]) => sum + time, 0) },
-          { name: '18:00 - 21:00', time: Object.entries(stats.hourlyDistribution)
-            .filter(([hour]) => parseInt(hour) >= 18 && parseInt(hour) < 21)
-            .reduce((sum, [_, time]) => sum + time, 0) },
-          { name: '21:00 - 24:00', time: Object.entries(stats.hourlyDistribution)
-            .filter(([hour]) => parseInt(hour) >= 21 && parseInt(hour) < 24)
-            .reduce((sum, [_, time]) => sum + time, 0) }
-        ]} 
-      />
+          <h2>Daily Distribution</h2>
+          <TaskBarChart 
+            data={[
+              { name: 'Monday', time: stats.dailyDistribution['Monday'] || 0 },
+              { name: 'Tuesday', time: stats.dailyDistribution['Tuesday'] || 0 },
+              { name: 'Wednesday', time: stats.dailyDistribution['Wednesday'] || 0 },
+              { name: 'Thursday', time: stats.dailyDistribution['Thursday'] || 0 },
+              { name: 'Friday', time: stats.dailyDistribution['Friday'] || 0 },
+              { name: 'Saturday', time: stats.dailyDistribution['Saturday'] || 0 },
+              { name: 'Sunday', time: stats.dailyDistribution['Sunday'] || 0 }
+            ]} 
+          />
 
-      <h2>Daily Distribution</h2>
-      <TaskBarChart 
-        data={[
-          { name: 'Monday', time: stats.dailyDistribution['Monday'] || 0 },
-          { name: 'Tuesday', time: stats.dailyDistribution['Tuesday'] || 0 },
-          { name: 'Wednesday', time: stats.dailyDistribution['Wednesday'] || 0 },
-          { name: 'Thursday', time: stats.dailyDistribution['Thursday'] || 0 },
-          { name: 'Friday', time: stats.dailyDistribution['Friday'] || 0 },
-          { name: 'Saturday', time: stats.dailyDistribution['Saturday'] || 0 },
-          { name: 'Sunday', time: stats.dailyDistribution['Sunday'] || 0 }
-        ]} 
-      />
+          <h2>Weekly Focus Heatmap</h2>
+          <HeatmapCalendar data={stats.weeklyHeatmap} dailyDistribution={stats.dailyDistribution} />
 
-      <h2>Weekly Focus Heatmap</h2>
-      <HeatmapCalendar data={stats.weeklyHeatmap} dailyDistribution={stats.dailyDistribution} />
+          <h2>Monthly Distribution</h2>
+          <TaskBarChart 
+            data={Object.entries(stats.monthlyDistribution).map(([name, time]) => ({ name, time }))} 
+          />
+        </>
+      ) : null}
 
-      <h2>Monthly Distribution</h2>
-      <TaskBarChart 
-        data={Object.entries(stats.monthlyDistribution).map(([name, time]) => ({ name, time }))} 
-      />
-
-      <h2>Session History</h2>
-      <SessionList sessions={sessions} onDelete={handleDelete} />
+      {!isSearching && <h2>
+        {searchResults ? 'Search Results' : 'Session History'}
+        {searchResults && (
+          <button 
+            onClick={() => {
+              setSearchQuery('')
+              setSearchResults(null)
+              fetchStats()
+            }}
+            className="clear-search"
+          >
+            Clear Search
+          </button>
+        )}
+      </h2>}
+      {!isSearching && <SessionList 
+        sessions={sessions} 
+        onDelete={handleDelete}
+        searchResults={searchResults}
+      />}
     </PageLayout>
   )
 } 

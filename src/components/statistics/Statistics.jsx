@@ -270,7 +270,28 @@ export function Statistics() {
             />
           </svg>
         </div>
-      ) : !searchResults ? (
+      ) : searchResults ? (
+        <>
+          <h2>
+            Search Results
+            <button 
+              onClick={() => {
+                setSearchQuery('')
+                setSearchResults(null)
+                fetchStats()
+              }}
+              className="clear-search"
+            >
+              Clear Search
+            </button>
+          </h2>
+          <SessionList 
+            sessions={sessions} 
+            onDelete={handleDelete}
+            searchResults={searchResults}
+          />
+        </>
+      ) : (
         <>
           <br />
           <h2>Overview</h2>
@@ -406,29 +427,14 @@ export function Statistics() {
           <TaskBarChart 
             data={Object.entries(stats.monthlyDistribution).map(([name, time]) => ({ name, time }))} 
           />
-        </>
-      ) : null}
 
-      {!isSearching && <h2>
-        {searchResults ? 'Search Results' : 'Session History'}
-        {searchResults && (
-          <button 
-            onClick={() => {
-              setSearchQuery('')
-              setSearchResults(null)
-              fetchStats()
-            }}
-            className="clear-search"
-          >
-            Clear Search
-          </button>
-        )}
-      </h2>}
-      {!isSearching && <SessionList 
-        sessions={sessions} 
-        onDelete={handleDelete}
-        searchResults={searchResults}
-      />}
+          <h2>Session History</h2>
+          <SessionList 
+            sessions={sessions} 
+            onDelete={handleDelete}
+          />
+        </>
+      )}
     </PageLayout>
   )
 } 

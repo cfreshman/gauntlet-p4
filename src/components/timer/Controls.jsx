@@ -41,9 +41,11 @@ export function Controls() {
         onClick={() => useTimerStore.getState().setElapsedTime(0)}
       />
 
-      <div id="roundno" title="Number of Focus Rounds" className="round-number">
-        {focusNum}/{totalRounds}
-      </div>
+      {totalRounds > 1 && (
+        <div id="roundno" title="Number of Focus Rounds" className="round-number">
+          {focusNum}/{totalRounds}
+        </div>
+      )}
 
       {audioType === 'noise' && (
         <div 

@@ -251,15 +251,15 @@ export function Timer({ isPip }) {
   return (
     <>
       <div id="timer" className={`t-${timerClass}`}>
-        <svg id="ring" viewBox="0 0 120 120">
-          <circle id="secondary" cx="60" cy="60" r="54" />
+        <svg id="ring" viewBox="0 0 136 136">
+          <circle id="secondary" cx="68" cy="68" r="54" />
           <circle 
             ref={progressRef}
             id="progress" 
-            cx="60" 
-            cy="60" 
+            cx="68" 
+            cy="68" 
             r="54"
-            transform="rotate(-90 60 60)"
+            transform="rotate(-90 68 68)"
           />
         </svg>
 

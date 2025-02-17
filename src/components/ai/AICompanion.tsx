@@ -253,27 +253,21 @@ export function AICompanion() {
               <textarea
                 ref={textareaRef}
                 value={inputMessage}
-                onChange={(e) => {
-                  console.log('Input changed:', e.target.value)
-                  setInputMessage(e.target.value)
-                }}
+                onChange={(e) => setInputMessage(e.target.value)}
+                placeholder="Ask anything..."
+                disabled={isLoading}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
-                    handleSubmit(e as any)
+                    handleSubmit(e)
                   }
                 }}
-                placeholder="Ask about your productivity patterns..."
-                maxLength={200}
-                rows={1}
-                disabled={isThinking}
               />
               <button 
                 type="submit" 
                 disabled={!inputMessage.trim() || isThinking}
-                style={{ alignSelf: 'flex-start' }}
               >
-                Send
+                <span>↑</span>
               </button>
             </form>
           </>

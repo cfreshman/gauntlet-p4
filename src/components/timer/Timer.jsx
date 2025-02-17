@@ -140,13 +140,26 @@ export function Timer({ isPip }) {
   useEffect(() => {
     async function handleVisibilityChange() {
       if (document.visibilityState === 'visible') {
-        const timer = await useTimerStore.getState().loadTimerState(true)
-        if (timer?.is_running) {
-          // Get current round duration from pattern
-          const pattern = timer.current_session?.pattern || '25'
-          const rounds = pattern.split('-').map(Number)
-          const duration = (rounds[timer.pattern_position] || 25) * 60
+        // Check local timer state first
+        const localState = useTimerStore.getState().timerState
+        const localSession = useTimerStore.getState().currentSession
+        
+        // Get current round duration from local state
+        const pattern = localSession?.pattern || '25'
+        const rounds = pattern.split('-').map(Number)
+        const duration = (rounds[localState.pattern_position] || 25) * 60
 
+        // If timer has reached zero, reload immediately
+        if (localState.elapsed_time >= duration) {
+          window.location.reload()
+          return
+        }
+
+        // Try to load remote state only if we haven't reloaded
+        const timer = await useTimerStore.getState().loadTimerState(true)
+        if (!timer) return
+
+        if (timer.is_running) {
           worker.postMessage({
             type: 'START',
             payload: {

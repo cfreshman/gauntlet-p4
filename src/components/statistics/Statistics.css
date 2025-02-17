@@ -203,29 +203,23 @@
 }
 
 .time-period {
-  background: var(--bgcolor2);
+  background-color: var(--bgcolor2);
   border: none;
-  padding: 0.35rem 0.75rem;
+  padding: 0.35rem 0.5rem;
   border-radius: 0.5rem;
   color: var(--color);
   font-size: 0.9rem;
   cursor: pointer;
   opacity: 0.8;
-  transition: opacity 0.2s, background-color 0.2s;
-}
-
-.time-period:hover {
-  opacity: 1;
-  background: var(--bgcolor);
 }
 
 .time-period.selected {
-  background: var(--coloraccent);
+  background-color: var(--coloraccent);
   opacity: 1;
   color: var(--bgcolor);
 }
 
-.filter-group label {
+.filter-group > label {
   font-size: 0.9rem;
   font-weight: 500;
   color: var(--coloraccent);
@@ -252,24 +246,34 @@
   background-color: var(--bgcolor);
 }
 
-.task-chip {
+.stat-task-chip {
   display: inline-flex;
   align-items: center;
   background-color: var(--bgcolor2);
-  padding: 0.35rem 0.75rem;
-  border-radius: 6px;
+  border: none;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.5rem;
+  color: var(--color);
+  font-size: 0.9rem;
   cursor: pointer;
-  transition: background-color 0.2s;
+  opacity: 0.8;
   user-select: none;
 }
 
-.task-chip:hover {
+.stat-task-chip input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 0.9rem;
+  height: 0.9rem;
+  margin: 0 0.35rem 0 0;
   background-color: var(--bgcolor);
+  border-radius: 0.25rem;
+  outline: none;
+  border: none;
 }
 
-.task-chip input[type="checkbox"] {
-  margin: 0 0.5rem 0 0;
-  accent-color: var(--coloraccent);
+.stat-task-chip input[type="checkbox"]:checked {
+  background-color: var(--coloraccent);
 }
 
 #stat-details {

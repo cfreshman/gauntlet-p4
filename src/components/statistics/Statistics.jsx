@@ -9,9 +9,9 @@ import { searchSessions } from '../../api/search-sessions'
 
 const TIME_PERIODS = {
   '0': 'Today',
-  '1': 'Past Day',
-  '7': 'Past Week',
-  '365': 'Past Year',
+  '7': 'Week',
+  '30': 'Month',
+  '365': 'Year',
   'all': 'All Time'
 }
 
@@ -314,7 +314,7 @@ export function Statistics() {
           <div className="filter-group">
             <label>Show Statistics</label>
             <div id="filters">
-              <label className="task-chip">
+              <label className="stat-task-chip">
                 <input
                   type="checkbox"
                   checked={selectedTasks.includes('all')}
@@ -329,7 +329,7 @@ export function Statistics() {
                 All Tasks
               </label>
               {tasks.map(task => (
-                <label key={task.id} className="task-chip">
+                <label key={task.id} className="stat-task-chip">
                   <input
                     type="checkbox"
                     checked={selectedTasks.includes(task.id)}

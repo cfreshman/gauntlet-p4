@@ -112,6 +112,7 @@ create table timer (
   current_session_id uuid references sessions(id),  -- Current active session
   current_task_id uuid references tasks(id),       -- Currently selected task
   pattern_position integer,            -- Position in current pattern (0-based)
+  started_at timestamp with time zone, -- When the current round started
   updated_at timestamp with time zone default now()
 );
 

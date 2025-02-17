@@ -7,18 +7,53 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 2
+export const supabase = createClient(
+  supabaseUrl,
+  supabaseKey,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
+      storageKey: 'tomodoro-auth',
+      // Set session to last 1 year
+      flowType: 'pkce',
+      storage: {
+        getItem: (key) => {
+          const item = localStorage.getItem(key)
+          try {
+            const parsed = JSON.parse(item)
+            if (parsed?.expires_at) {
+              // Extend expiration to 1 year from now
+              parsed.expires_at = Math.floor(Date.now() / 1000) + 31536000
+              localStorage.setItem(key, JSON.stringify(parsed))
+            }
+            return item
+          } catch {
+            return item
+          }
+        },
+        setItem: (key, value) => {
+          try {
+            const parsed = JSON.parse(value)
+            if (parsed?.expires_at) {
+              // Set expiration to 1 year from now
+              parsed.expires_at = Math.floor(Date.now() / 1000) + 31536000
+              value = JSON.stringify(parsed)
+            }
+          } catch {}
+          localStorage.setItem(key, value)
+        },
+        removeItem: (key) => localStorage.removeItem(key)
+      }
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 2
+      }
     }
   }
-})
+)
 
 // Auth functions
 export async function signInWithEmail(email, password) {

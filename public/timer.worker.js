@@ -82,7 +82,7 @@ self.onmessage = async (e) => {
       return
     }
 
-    const { elapsed_time, current_session_id, current_task_id, pattern_position, duration } = payload
+    const { elapsed_time, current_session_id, current_task_id, pattern_position, duration, started_at } = payload
     let currentTime = elapsed_time
 
     // Clear any existing intervals
@@ -95,6 +95,9 @@ self.onmessage = async (e) => {
         currentTime++
         self.postMessage({ type: 'TICK', elapsed_time: currentTime })
       } else {
+        // Send final tick to ensure UI updates
+        self.postMessage({ type: 'TICK', elapsed_time: duration })
+        
         // Stop intervals if duration reached
         if (interval) clearInterval(interval)
         if (syncInterval) clearInterval(syncInterval)
@@ -110,7 +113,8 @@ self.onmessage = async (e) => {
         is_running: true,
         current_session_id,
         current_task_id,
-        pattern_position
+        pattern_position,
+        started_at
       })
     }, 1000) // Sync every second
 
@@ -120,7 +124,8 @@ self.onmessage = async (e) => {
       is_running: true,
       current_session_id,
       current_task_id,
-      pattern_position
+      pattern_position,
+      started_at
     })
   }
 

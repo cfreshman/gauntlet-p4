@@ -84,7 +84,8 @@ export function Timer({ isPip }) {
             elapsed_time,
             current_session_id: currentSession?.id,
             current_task_id: timerState.current_task_id,
-            pattern_position
+            pattern_position,
+            started_at: timerState.started_at
           }
         })
 
@@ -95,18 +96,7 @@ export function Timer({ isPip }) {
           isBreak ? 'Time to focus!' : 'Time for a break!'
         )
         
-        if (!isBreak && elapsed_time >= 60 && (elapsed_time >= 600 || elapsed_time >= duration * 0.5)) {
-          useTimerStore.getState().nextRound().then(roundId => {
-            if (roundId) {
-              setCurrentRoundId(roundId)
-              setShowNotesDialog(true)
-            } else {
-              useTimerStore.getState().nextRound()
-            }
-          })
-        } else {
-          useTimerStore.getState().nextRound()
-        }
+        handleRoundComplete()
       } else {
         // Start worker
         worker.postMessage({
@@ -116,7 +106,8 @@ export function Timer({ isPip }) {
             current_session_id: currentSession?.id,
             current_task_id: timerState.current_task_id,
             pattern_position,
-            duration
+            duration,
+            started_at: timerState.started_at || new Date().toISOString()
           }
         })
       }
@@ -128,9 +119,15 @@ export function Timer({ isPip }) {
           elapsed_time,
           current_session_id: currentSession?.id,
           current_task_id: timerState.current_task_id,
-          pattern_position
+          pattern_position,
+          started_at: null
         }
       })
+
+      // Check for completion when timer is stopped and at max duration
+      if (elapsed_time >= duration) {
+        handleRoundComplete()
+      }
     }
 
     // Cleanup worker on unmount
@@ -157,15 +154,19 @@ export function Timer({ isPip }) {
               current_session_id: timer.current_session_id,
               current_task_id: timer.current_task_id,
               pattern_position: timer.pattern_position,
-              duration
+              duration,
+              started_at: timer.started_at || new Date().toISOString()
             }
           })
-        } else if (timer?.elapsed_time >= duration && !isBreak) {
-          // Timer is stopped at duration, handle round completion
-          const roundId = await useTimerStore.getState().nextRound()
-          if (roundId) {
-            setCurrentRoundId(roundId)
+        } else {
+          // Check for completed round needing notes
+          const roundInfo = await useTimerStore.getState().checkForCompletedRound()
+          if (roundInfo?.needsNotes) {
+            setCurrentRoundId(roundInfo.id)
             setShowNotesDialog(true)
+          } else if (roundInfo) {
+            // If round is complete but doesn't need notes, advance
+            useTimerStore.getState().advanceRound()
           }
         }
       }
@@ -175,7 +176,7 @@ export function Timer({ isPip }) {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [duration, isBreak])
+  }, [])
 
   // Effect to sync task changes
   useEffect(() => {
@@ -193,7 +194,8 @@ export function Timer({ isPip }) {
           elapsed_time,
           current_session_id: currentSession.id,
           current_task_id: timerState.current_task_id,
-          pattern_position
+          pattern_position,
+          started_at: timerState.started_at
         }
       })
       if (is_running) {
@@ -204,7 +206,8 @@ export function Timer({ isPip }) {
             current_session_id: currentSession.id,
             current_task_id: timerState.current_task_id,
             pattern_position,
-            duration
+            duration,
+            started_at: timerState.started_at || new Date().toISOString()
           }
         })
       }
@@ -238,18 +241,32 @@ export function Timer({ isPip }) {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
   }
 
+  // Handle round completion
+  const handleRoundComplete = async () => {
+    const roundInfo = await useTimerStore.getState().checkForCompletedRound()
+    if (roundInfo?.needsNotes) {
+      setCurrentRoundId(roundInfo.id)
+      setShowNotesDialog(true)
+    } else if (!isBreak) {
+      // If no notes needed (e.g. break or skipped round), advance immediately
+      useTimerStore.getState().advanceRound()
+    }
+  }
+
   // Handle notes submission
   const handleNotesSubmit = async (save) => {
-    if (save && currentRoundId && sessionNotes) {
-      try {
-        await supabase
-          .from('rounds')
-          .update({ notes: sessionNotes })
-          .eq('id', currentRoundId)
-      } catch (error) {
-        console.error('Error updating round notes:', error)
+    try {
+      if (save && sessionNotes && currentRoundId) {
+        // Update notes first
+        await useTimerStore.getState().updateRoundNotes(currentRoundId, sessionNotes)
       }
+      
+      // Always advance after notes are handled (saved or skipped)
+      await useTimerStore.getState().advanceRound()
+    } catch (error) {
+      console.error('Error handling round completion:', error)
     }
+
     setSessionNotes('')
     setShowNotesDialog(false)
     setCurrentRoundId(null)
@@ -298,7 +315,7 @@ export function Timer({ isPip }) {
       </div>
 
       <dialog ref={notesDialogRef} id="notes-dialog">
-        <form method="dialog" onSubmit={(e) => {
+        <form onSubmit={(e) => {
           e.preventDefault()
           handleNotesSubmit(true)
         }}>

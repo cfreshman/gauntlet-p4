@@ -139,7 +139,7 @@ Rounds:
 ${session.rounds.map(round => `- ${Math.round(round.duration / 60)}min: ${round.notes || 'No notes'}`).join('\n')}`
 ).join('\n\n')}
 
-AGAIN, TRY TO RETURN A SESSION SUGGESTION RESPONSE IF IT MAKES SENSE.`
+AGAIN, TRY TO RETURN A SESSION SUGGESTION RESPONSE IF IT MAKES SENSE. IF THE USER SAYS LIKE 'WHAT WOULD BE A GOOD PATTERN' - RETURN A SESSION SUGGESTION! SAME FOR SEMANTICALLY SIMILAR MESSAGES.`
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4-turbo-preview',

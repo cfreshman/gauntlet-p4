@@ -16,7 +16,9 @@ export const supabase = createClient(
       persistSession: true,
       detectSessionInUrl: false,
       storageKey: 'tomodoro-auth',
-      flowType: 'pkce'
+      storage: localStorage,
+      flowType: 'pkce',
+      debug: true
     },
     realtime: {
       params: {
@@ -25,6 +27,92 @@ export const supabase = createClient(
     }
   }
 )
+
+// Helper function to show auth screen
+function showAuthScreen() {
+  document.body.classList.remove('authenticated')
+  document.querySelector('.auth-container')?.setAttribute('style', 'display: flex')
+}
+
+// Helper function to hide auth screen
+function hideAuthScreen() {
+  document.body.classList.add('authenticated')
+  document.querySelector('.auth-container')?.setAttribute('style', 'display: none')
+}
+
+// Helper function to clear auth data
+function clearAuthData() {
+  for (const key of Object.keys(localStorage)) {
+    if (key.startsWith('sb-')) {
+      localStorage.removeItem(key)
+    }
+  }
+}
+
+// Add session recovery and error handling
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+    clearAuthData()
+    showAuthScreen()
+  } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+    hideAuthScreen()
+  }
+})
+
+// Add error interceptor
+const { fetch: originalFetch } = window
+window.fetch = async (...args) => {
+  try {
+    const response = await originalFetch(...args)
+    
+    // Handle auth errors
+    if (response.status === 403 && args[0].includes(supabaseUrl)) {
+      showAuthScreen()
+      clearAuthData()
+      
+      // Get a fresh session
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        // If no valid session, keep auth screen visible
+        showAuthScreen()
+      } else {
+        // If we got a valid session, try to hide auth screen
+        const { data: { user }, error } = await supabase.auth.getUser()
+        if (error || !user) {
+          showAuthScreen()
+        } else {
+          hideAuthScreen()
+        }
+      }
+    }
+    
+    return response
+  } catch (error) {
+    // Show auth screen on network errors too
+    if (args[0].includes(supabaseUrl)) {
+      showAuthScreen()
+    }
+    throw error
+  }
+}
+
+// Check auth state on load
+supabase.auth.getSession().then(async ({ data: { session } }) => {
+  if (!session) {
+    showAuthScreen()
+  } else {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (error || !user) {
+        showAuthScreen()
+      } else {
+        hideAuthScreen()
+      }
+    } catch (error) {
+      showAuthScreen()
+    }
+  }
+})
 
 // Auth functions
 export async function signInWithEmail(email, password) {

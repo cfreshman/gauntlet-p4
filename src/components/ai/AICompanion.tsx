@@ -256,6 +256,7 @@ export function AICompanion() {
                 onChange={(e) => setInputMessage(e.target.value)}
                 placeholder="Ask anything..."
                 disabled={isLoading}
+                inputMode="text"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()

@@ -238,6 +238,9 @@
   resize: none;
   overflow-y: auto;
   font-size: 0.9rem;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }
 
 .chat-form textarea::placeholder {
@@ -255,6 +258,7 @@
   align-items: flex-start;
   justify-content: center;
   padding: 0.25rem;
+  min-width: 1.75rem;
   background-color: var(--coloraccent);
   color: var(--bgcolor);
   border: none;
@@ -373,4 +377,12 @@
 
 .loading .close-loading:hover {
   transform: translateY(-2px);
+}
+
+@media (max-width: 48rem) {
+  .chat-form textarea {
+    font-size: 1rem;
+    -webkit-user-select: text;
+    user-select: text;
+  }
 } 
